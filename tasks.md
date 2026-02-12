@@ -1,0 +1,206 @@
+# TraceIQ: Master Execution Plan (Detailed)
+
+## Phase 1: Environment & Orchestration Setup
+- [x] **Project Initialization**
+    - [x] Create root directory structure `backend`, `frontend`, `infrastructure`
+    - [x] Initialize Git repository
+    - [x] Create `.gitignore` (Python, Node, Flutter, OS specific)
+    - [x] Create `README.md` with project documentation links
+    - [ ] Create `Makefile` for common commands (dev, test, build)
+    - [ ] Configure `pre-commit` hooks (Black, Isort, Flake8, ESLint)
+- [ ] **Docker Infrastructure**
+    - [ ] Create `docker-compose.yml` base file
+    - [ ] Define `postgres` service (v15-alpine)
+    - [ ] Provide `pgvector` initialization script for postgres
+    - [ ] Define `redis` service (v7-alpine)
+    - [ ] Define `minio` service (S3 compatible storage)
+    - [ ] Define `adminer` or `pgadmin` service for Db management
+    - [ ] Configure shared networks and volumes
+    - [ ] Create `.env.example` with default credentials
+    - [ ] Verify container spin-up and network connectivity
+
+## Phase 2: Backend Core (Domain & Infrastructure)
+- [x] **Python Environment**
+    - [x] Setup virtual environment `venv`
+    - [x] Create `requirements.txt` (FastAPI, SQLModel, Pydantic, Passlib, PyJWT)
+    - [x] Create `requirements-dev.txt` (Pytest, Ruff, Mypy)
+    - [x] Install dependencies
+- [x] **Application Configuration**
+    - [x] Create `backend/src/core/config.py`
+    - [x] Define `Settings` class using Pydantic BaseSettings
+    - [x] Load DB URLs, Secret Keys, Algorithm settings
+    - [x] Configure Logging (JSON format) in `backend/src/core/logging.py`
+- [x] **Database Setup (SQLModel/SQLAlchemy)**
+    - [x] Create `backend/src/infrastructure/database.py`
+    - [x] Configure AsyncEngine (asyncpg)
+    - [x] Create `get_db` dependency for session management
+    - [x] Initialize Alembic (`alembic init`)
+    - [x] Configure `env.py` in Alembic to use async engine and SQLModel metadata
+- [x] **Domain Models (The "Entities")**
+    - [x] **User Model**
+        - [x] Create `backend/src/domain/models/user.py`
+        - [x] Define `UserBase` (username, email, station_id)
+        - [x] Define `User` (table=True, password_hash, role)
+    - [x] **Station Model**
+        - [x] Create `backend/src/domain/models/station.py`
+        - [x] Define `Station` (name, district, province)
+    - [x] **Criminal Model**
+        - [x] Create `backend/src/domain/models/criminal.py`
+        - [x] Define `Criminal` (names, nic, dob, features)
+        - [x] Add Enums for `ThreatLevel` and `LegalStatus`
+    - [x] **Case Model**
+        - [x] Create `backend/src/domain/models/case.py`
+        - [x] Define `Case` (case_number, description, status)
+        - [x] Create Many-to-Many link `CaseSuspect`
+    - [x] **Face Embedding Model**
+        - [x] Create `backend/src/domain/models/face.py`
+        - [x] Define `FaceEmbedding` (criminal_id, vector_data, image_url)
+        - [x] Configure `pgvector` column type
+- [x] **Repositories (Data Access Layer)**
+    - [x] Create `GenericRepository` interface (CRUD)
+    - [x] Implement `UserRepository` (get_by_email, get_by_username)
+    - [x] Implement `CriminalRepository` (search_by_nic, search_by_name)
+    - [x] Implement `CaseRepository`
+    - [x] Implement `FaceRepository` (vector similarity search using SQL)
+
+## Phase 3: Backend Business Logic (Services)
+- [x] **Authentication Service**
+    - [x] Implement `pwd_context` (bcrypt/argon2) in `security.py`
+    - [x] Create `create_access_token` function
+    - [x] Create `verify_password` function
+    - [x] Implement `AuthService` class
+    - [x] Add login logic (validate user -> issue token)
+- [x] **API Security Dependencies**
+    - [x] Create `get_current_user` dependency (OAuth2PasswordBearer)
+    - [x] Validate JWT token and expiration
+    - [x] Create `get_current_active_user`
+    - [x] Create `get_current_admin_user` (Role check)
+- [x] **User Management Service**
+    - [x] CreateUser logic (hashing password)
+    - [x] UpdateUser logic
+    - [x] SoftDeleteUser logic
+- [x] **Criminal Record Service**
+    - [x] CreateProfile logic (transactional)
+    - [x] AddOffenseHistory logic
+    - [x] UploadMugshot logic (upload to MinIO -> trigger AI)
+
+## Phase 4: AI Engine Integration
+- [x] **AI Service Structure**
+    - [x] Create `backend/src/services/ai/` package
+    - [x] Define `FaceDetectionInterface`
+    - [x] Define `FaceEmbeddingInterface`
+- [x] **Model Implementation**
+    - [x] Create `MTCNNStrategy` (using facenet-pytorch)
+        - [x] Implement `detect_faces(image)`
+    - [x] Create `FaceNetStrategy`
+        - [x] Implement `embed_face(aligned_image)`
+    - [x] Create `Pipeline` class to chain Detection -> Alignment -> Embedding
+- [ ] **Optimization**
+    - [ ] Implement ONNX Runtime loader for FaceNet (performance)
+    - [ ] Add image resizing/normalization utilities
+- [x] **Vector Search Integration**
+    - [x] Create `RecognitionService`
+    - [x] Implement `find_nearest_matches(vector, threshold)`
+    - [x] Tune distance thresholds based on testing
+
+## Phase 5: API Endpoints (FastAPI)
+- [x] **Main Application**
+    - [x] Create `backend/src/main.py`
+    - [x] Configure CORS middleware
+    - [x] Setup Exception Handlers (validation, auth errors)
+    - [x] Include Routers
+- [x] **Auth Router (`/api/v1/auth`)**
+    - [x] `POST /login` (OAuth2 form data)
+    - [x] `POST /refresh`
+    - [x] `GET /me` (Handled via deps)
+- [x] **Users Router (`/api/v1/users`)**
+    - [x] `POST /` (Admin only)
+    - [x] `GET /` (Pagination)
+    - [x] `GET /{id}`
+- [x] **Criminals Router (`/api/v1/criminals`)**
+    - [x] `POST /` (Create Profile)
+    - [x] `GET /search` (Text search)
+    - [x] `GET /{id}` (Full dossier)
+    - [x] `POST /{id}/photos` (Upload)
+- [x] **Recognition Router (`/api/v1/recognition`)**
+    - [x] `POST /identify` (Multipart file upload)
+    - [x] Call AI Pipeline -> Call Vector Search -> Return JSON
+
+## Phase 6: Frontend - Web Dashboard (React)
+- [x] **Project Setup**
+    - [x] Init Vite project (TypeScript + SWC)
+    - [x] Setup TailwindCSS & PostCSS
+    - [x] Install `shadcn/ui` components (Button, Card, Input, Table)
+    - [x] Setup `react-router-dom`
+    - [x] Setup `tanstack-query` (react-query)
+    - [x] Setup `axios` instance with interceptors (Auth header)
+- [x] **Global State**
+    - [x] Setup `zustand` store for Auth (user, token, login/logout)
+    - [ ] Setup UI store (sidebar toggle, theme)
+- [x] **Auth Components**
+    - [x] Design Login Page (3D/Canvas background)
+    - [x] Implement Login Form with Validation (Zod + React Hook Form)
+    - [x] Handle Login API integration
+- [x] **Layouts**
+    - [x] Create `DashboardLayout` (Sidebar, Navbar, Main Content)
+    - [x] Create `AuthGuard` (Redirect to login if unauthenticated)
+- [/] **Dashboard Widgets**
+    - [x] **Home**: Stats cards (Total Criminals, Recent Alerts)
+    - [ ] **Criminals List**: Data Table with Sorting/Pagination
+    - [ ] **Create Profile**: Multi-step wizard form (Personal -> Phys -> History)
+    - [ ] **Profile View**: Detailed layout with Mugshot, Timeline, and Data
+    - [ ] **Search**: Global search bar logic
+- [ ] **3D Visualization (Advanced)**
+    - [ ] Integrate `react-three-fiber`
+    - [ ] Create "Network Graph" of connected criminals (Force Graph)
+
+## Phase 7: Mobile Application (Flutter)
+- [ ] **Project Setup**
+    - [ ] `flutter create mobile_app`
+    - [ ] Setup `pubspec.yaml` (dio, camera, go_router, flutter_bloc)
+    - [ ] Configure Android permissions (Camera, Internet)
+    - [ ] Configure iOS permissions (Info.plist)
+- [ ] **State Management**
+    - [ ] Implement AuthBloc (Login, Logout, CheckStatus)
+    - [ ] Implement OfflineBloc (Sync management)
+- [ ] **Screens - Auth**
+    - [ ] Login Screen (Biometric option)
+    - [ ] Splash Screen
+- [ ] **Screens - Dashboard**
+    - [ ] Home Screen ("Scan Now" big button, "Wanted" list)
+    - [ ] Navigation Drawer
+- [ ] **Screens - Operation**
+    - [ ] Camera View (Custom painter for Face Bounding Box overlay)
+    - [ ] Capture & Send logic
+    - [ ] Loading State ("Analyzing...")
+    - [ ] Match Result Sheet (Photo, % Confidence, Name)
+- [ ] **Offline Capability**
+    - [ ] Setup `drift` (SQLite)
+    - [ ] Implement "Download Top 100 Wanted" logic
+    - [ ] Local matching logic (FaceNet Mobile tflite - Optional/Advanced)
+
+## Phase 8: Testing & QA
+- [ ] **Backend Tests**
+    - [ ] Configure `conftest.py` with Test DB fixture
+    - [x] Write tests for Auth Flow (Verified Manually & Browser Test)
+    - [ ] Write tests for User CRUD
+    - [ ] Write tests for Criminal CRUD
+    - [ ] Write tests for AI Embedding (using dummy images)
+- [ ] **Integration Tests**
+    - [ ] Test full flow: Upload Image -> Embed -> Search -> Match
+- [ ] **Frontend Tests**
+    - [ ] Component testing with Vitest
+    - [ ] E2E testing with Cypress (Login -> Navigate -> Logout)
+
+## Phase 9: Deployment & DevOps
+- [ ] **CI/CD**
+    - [ ] Configure GitHub Actions workflow
+    - [ ] Run Linter & Tests on PR
+    - [ ] Build Docker Images
+- [ ] **Production Config**
+    - [ ] Configure Nginx Reverse Proxy (SSL termination)
+    - [ ] Set up Gunicorn/Uvicorn workers
+    - [ ] Set up Database Backups (S3)
+- [ ] **Documentation**
+    - [ ] API Docs (Swagger/Redoc auto-generated)
+    - [ ] User Manual (PDF)
