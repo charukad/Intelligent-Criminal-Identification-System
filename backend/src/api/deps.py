@@ -55,6 +55,39 @@ async def get_current_active_admin(
 ) -> User:
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
-            status_code=400, detail="The user doesn't have enough privileges"
+            status_code=403, detail="Admin privileges required"
         )
     return current_user
+
+def require_role(*allowed_roles: UserRole):
+    """
+    Dependency factory for role-based access control.
+    
+    Usage:
+        @router.get("/")
+        async def endpoint(user: User = Depends(require_role(UserRole.ADMIN))):
+            ...
+    """
+    async def check_role(
+        current_user: Annotated[User, Depends(get_current_user)]
+    ) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Insufficient permissions. Required one of: {[role.value for role in allowed_roles]}"
+            )
+        return current_user
+    return check_role
+
+# Convenience dependencies for common permission levels
+def get_admin_or_senior_officer():
+    """Allows Admin and Senior Officer roles"""
+    return require_role(UserRole.ADMIN, UserRole.SENIOR_OFFICER)
+
+def get_officer_or_above():
+    """Allows Admin, Senior Officer, and Field Officer roles (excludes Viewer)"""
+    return require_role(UserRole.ADMIN, UserRole.SENIOR_OFFICER, UserRole.FIELD_OFFICER)
+
+def get_any_authenticated_user():
+    """Allows any authenticated user (all roles)"""
+    return get_current_user

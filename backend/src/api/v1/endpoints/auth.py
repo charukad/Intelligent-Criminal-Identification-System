@@ -10,6 +10,8 @@ from src.services.auth_service import AuthService
 from src.infrastructure.repositories.user import UserRepository
 from src.infrastructure.database import get_db
 from src.domain.models.user import User
+from src.api.deps import get_current_user
+from src.schemas.user import UserResponse
 
 router = APIRouter()
 
@@ -40,9 +42,21 @@ async def login_access_token(
         
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
+    access_token = create_access_token(
+        subject=user.id, expires_delta=access_token_expires
+    )
+    
     return {
-        "access_token": create_access_token(
-            subject=user.id, expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
+        "access_token": access_token,
+        "token_type": "bearer"
     }
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Get current user profile.
+    Returns the authenticated user's information.
+    """
+    return current_user

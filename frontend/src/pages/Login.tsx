@@ -1,180 +1,107 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { AlertCircle, Loader2 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuthStore } from '@/store/authStore';
-import { api } from '@/api/client';
-import type { AuthResponse } from '@/types/auth';
-
-const loginSchema = z.object({
-    username: z.string().min(3, "Username must be at least 3 characters"),
-    password: z.string().min(5, "Password must be at least 5 characters"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const setAuth = useAuthStore((state) => state.login);
-    const setUser = useAuthStore((state) => state.setUser);
+    const { login } = useAuth();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<LoginFormData>({
-        resolver: zodResolver(loginSchema),
-    });
-
-    const onSubmit = async (data: LoginFormData) => {
-        setLoading(true);
-        setError(null);
-
-        // Prepare form data (OAuth2 expects form-urlencoded if strict, but our backend endpoint accepted Form params.
-        // However, fastAPI OAuth2PasswordRequestForm usually expects form-data.
-        // Let's use URLSearchParams to be safe for OAuth2 endpoint standard.
-        const formData = new URLSearchParams();
-        formData.append('username', data.username);
-        formData.append('password', data.password);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsLoading(true);
 
         try {
-            // 1. Get Token
-            const response = await api.post<AuthResponse>('/auth/login', formData, {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            });
-
-            const { access_token } = response.data;
-            setAuth(access_token);
-
-            // 2. Get User Details
-            // We need a /users/me endpoint or similar. For now, let's decode or fetch.
-            // Our backend deps has get_current_user but maybe no direct /me endpoint exposed explicitly in router yet?
-            // Wait, I implemented /auth/me in tasks.md check? 
-            // Checking backend... I implemented /auth endpoints in auth.py but only /login.
-            // I should assume I need to fetch user details or just redirect for now.
-            // Let's just set a dummy user or fetch if the endpoint existed. 
-            // Actually, looking at my backend implementation plan, I implemented /login but maybe missed /me in the file write?
-            // Let's re-verify backend auth.py later. For now, proceed to dashboard.
-
-            // Temporary: Manually decode or just set a placeholder until we fix /me
-            setUser({
-                id: "temp-id",
-                username: data.username,
-                email: "temp@example.com",
-                role: "field_officer",
-                is_active: true
-            });
-
+            await login(username, password);
             navigate('/dashboard');
         } catch (err: any) {
-            console.error(err);
-            setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
+            setError(err.response?.data?.detail || 'Login failed. Please try again.');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="flex min-h-screen w-full bg-black text-white selection:bg-blue-500/30">
-
-            {/* Left Side - Abstract Visual */}
-            <div className="hidden lg:flex w-1/2 relative bg-zinc-900 overflow-hidden items-center justify-center">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-ad506d134842?q=80&w=2607&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-
-                <div className="relative z-10 p-12 text-center">
-                    <div className="w-24 h-24 bg-blue-600 rounded-full blur-[100px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50 animate-pulse"></div>
-                    <h1 className="text-6xl font-bold tracking-tighter mb-4 bg-gradient-to-br from-white to-gray-500 bg-clip-text text-transparent">
-                        TraceIQ
-                    </h1>
-                    <p className="text-gray-400 text-lg max-w-md mx-auto">
-                        Next-Generation Criminal Identification System powered by Advanced Biometrics.
-                    </p>
-                </div>
-            </div>
-
-            {/* Right Side - Login Form */}
-            <div className="flex-1 flex items-center justify-center p-8 relative">
-                <div className="absolute top-0 right-0 p-8">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        System Operational
-                    </div>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-900 p-4">
+            <div className="w-full max-w-md">
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-white mb-2">TraceIQ</h1>
+                    <p className="text-purple-300">Intelligent Criminal Profiling System</p>
                 </div>
 
-                <Card className="w-full max-w-md border-zinc-800 bg-zinc-950/50 backdrop-blur-xl shadow-2xl">
+                <Card className="bg-slate-900/50 border-purple-500/20 backdrop-blur-sm">
                     <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl font-bold text-white">Access Portal</CardTitle>
-                        <CardDescription className="text-zinc-400">
-                            Enter your officer credentials to proceed
+                        <CardTitle className="text-2xl font-bold text-white">Sign In</CardTitle>
+                        <CardDescription className="text-slate-400">
+                            Enter your credentials to access your account
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="username" className="text-zinc-300">Badge ID / Username</Label>
-                                <Input
-                                    id="username"
-                                    placeholder="Officer ID"
-                                    {...register("username")}
-                                    className="bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:ring-blue-600"
-                                />
-                                {errors.username && (
-                                    <p className="text-xs text-red-400">{errors.username.message}</p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password" className="text-zinc-300">Password code</Label>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    {...register("password")}
-                                    className="bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:ring-blue-600"
-                                />
-                                {errors.password && (
-                                    <p className="text-xs text-red-400">{errors.password.message}</p>
-                                )}
-                            </div>
-
+                    <form onSubmit={handleSubmit}>
+                        <CardContent className="space-y-4">
                             {error && (
-                                <div className="bg-red-900/20 border border-red-900/50 p-3 rounded-md flex items-center gap-2 text-sm text-red-200">
-                                    <AlertCircle className="w-4 h-4" />
-                                    {error}
+                                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                    <AlertCircle className="h-4 w-4 text-red-400" />
+                                    <p className="text-sm text-red-400">{error}</p>
                                 </div>
                             )}
 
+                            <div className="space-y-2">
+                                <Label htmlFor="username" className="text-slate-300">Username</Label>
+                                <Input
+                                    id="username"
+                                    type="text"
+                                    placeholder="Enter your username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500"
+                                    required
+                                    autoComplete="username"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="password" className="text-slate-300">Password</Label>
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="Enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500"
+                                    required
+                                    autoComplete="current-password"
+                                />
+                            </div>
+                        </CardContent>
+
+                        <CardFooter className="flex flex-col space-y-4">
                             <Button
                                 type="submit"
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium"
+                                disabled={isLoading}
                             >
-                                {loading ? (
+                                {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Authenticating...
+                                        Signing in...
                                     </>
                                 ) : (
-                                    "Initialize Session"
+                                    'Sign In'
                                 )}
                             </Button>
-                        </form>
-                    </CardContent>
-                    <CardFooter className="flex justify-center border-t border-zinc-800/50 pt-6">
-                        <p className="text-xs text-zinc-500">
-                            Restricted Access • Law Enforcement Use Only
-                        </p>
-                    </CardFooter>
+                        </CardFooter>
+                    </form>
                 </Card>
             </div>
         </div>
