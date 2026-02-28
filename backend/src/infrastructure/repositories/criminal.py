@@ -14,11 +14,12 @@ class CriminalRepository(BaseRepository[Criminal]):
         result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def search_by_name(self, query: str) -> List[Criminal]:
-        # Case insensitive partial match on first or last name
+    async def search_by_name_or_nic(self, query: str) -> List[Criminal]:
+        # Case insensitive partial match on first name, last name, or NIC
         statement = select(Criminal).where(
-            (col(Criminal.first_name).ilike(f"%{query}%")) | 
-            (col(Criminal.last_name).ilike(f"%{query}%"))
+            (col(Criminal.first_name).ilike(f"%{query}%")) |
+            (col(Criminal.last_name).ilike(f"%{query}%")) |
+            (col(Criminal.nic).ilike(f"%{query}%"))
         )
         result = await self.session.execute(statement)
         return result.scalars().all()

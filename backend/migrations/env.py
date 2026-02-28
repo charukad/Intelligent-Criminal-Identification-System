@@ -6,7 +6,7 @@ from sqlmodel import SQLModel
 from alembic import context
 
 # Import all models to register them in metadata
-from src.domain.models import user, station, criminal, case #, face  # TODO: Enable after pgvector is installed
+from src.domain.models import user, station, criminal, case, face, audit, alert
 from src.core.config import settings
 
 # this is the Alembic Config object, which provides

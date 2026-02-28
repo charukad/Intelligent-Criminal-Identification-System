@@ -20,6 +20,32 @@ export default function DashboardLayout() {
     const logout = useAuthStore((state) => state.logout);
     const navigate = useNavigate();
 
+    const role = user?.role;
+    const roleAccent =
+        role === 'admin'
+            ? 'bg-red-500'
+            : role === 'senior_officer'
+            ? 'bg-amber-500'
+            : role === 'field_officer'
+            ? 'bg-blue-500'
+            : 'bg-zinc-500';
+    const roleAccentText =
+        role === 'admin'
+            ? 'text-red-500'
+            : role === 'senior_officer'
+            ? 'text-amber-500'
+            : role === 'field_officer'
+            ? 'text-blue-500'
+            : 'text-zinc-500';
+    const roleClass =
+        role === 'admin'
+            ? 'role-admin'
+            : role === 'senior_officer'
+            ? 'role-senior'
+            : role === 'field_officer'
+            ? 'role-field'
+            : 'role-default';
+
     const handleLogout = () => {
         logout();
         navigate('/login');
@@ -33,7 +59,7 @@ export default function DashboardLayout() {
     ];
 
     return (
-        <div className="min-h-screen bg-background flex">
+        <div className={cn("min-h-screen bg-background flex", roleClass)}>
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
@@ -50,7 +76,7 @@ export default function DashboardLayout() {
                 <div className="h-full flex flex-col">
                     {/* Header */}
                     <div className="h-16 flex items-center px-6 border-b">
-                        <div className="w-8 h-8 bg-primary rounded-full mr-3 animate-pulse" />
+                        <div className={`w-8 h-8 rounded-full mr-3 animate-pulse ${roleAccent}`} />
                         <span className="font-bold text-xl tracking-tight">TraceIQ</span>
                         <button
                             className="ml-auto lg:hidden"
@@ -84,12 +110,14 @@ export default function DashboardLayout() {
                     {/* Footer / User */}
                     <div className="p-4 border-t bg-muted/20">
                         <div className="flex items-center mb-4">
-                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${roleAccent} text-white`}>
                                 {user?.username?.substring(0, 2).toUpperCase() || 'OF'}
                             </div>
                             <div className="ml-3 overflow-hidden">
                                 <p className="text-sm font-medium truncate">{user?.username}</p>
-                                <p className="text-xs text-muted-foreground truncate capitalize">{user?.role?.replace('_', ' ')}</p>
+                                <p className={`text-xs truncate capitalize ${roleAccentText}`}>
+                                    {user?.role?.replace('_', ' ')}
+                                </p>
                             </div>
                         </div>
                         <Button

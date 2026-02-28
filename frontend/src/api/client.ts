@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
+import { getApiBaseUrl, getBackendRoot } from '@/api/baseUrl';
 
-const BASE_URL = 'http://localhost:8001/api/v1';
+const BASE_URL = getApiBaseUrl();
+const BACKEND_ROOT = getBackendRoot();
 
 export const api = axios.create({
     baseURL: BASE_URL,
@@ -26,7 +28,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && error.response.status === 401) {
+        const status = error.response?.status;
+        const detail = error.response?.data?.detail;
+        const isInvalidCredentialError =
+            status === 401 ||
+            (status === 403 && detail === 'Could not validate credentials');
+
+        if (isInvalidCredentialError) {
             // Auto-logout on unauthorized
             useAuthStore.getState().logout();
             // Optional: Redirect to login
@@ -35,3 +43,8 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+export function buildBackendUrl(path: string): string {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return BACKEND_ROOT ? `${BACKEND_ROOT}${normalizedPath}` : normalizedPath;
+}

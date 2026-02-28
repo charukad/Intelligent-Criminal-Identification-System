@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import type { User, UserRole } from '@/types/user';
 import { api } from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
 
 interface AuthContextType {
     user: User | null;
@@ -18,21 +19,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.token);
+    const isLoading = !useAuthStore((state) => state.hasHydrated);
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
+    const setUser = useAuthStore((state) => state.setUser);
+    const loginToStore = useAuthStore((state) => state.login);
+    const logoutFromStore = useAuthStore((state) => state.logout);
 
-    // Load token and user from localStorage on mount
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-
-        if (storedToken && storedUser) {
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
+        if (!hasHydrated || !token) {
+            return;
         }
-        setIsLoading(false);
-    }, []);
+
+        const fetchProfile = async () => {
+            try {
+                const userResponse = await api.get('/auth/me', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+                const userData = userResponse.data;
+                setUser(userData);
+                loginToStore(token, userData);
+            } catch {
+                logoutFromStore();
+            }
+        };
+        fetchProfile();
+    }, [hasHydrated, token, setUser, loginToStore, logoutFromStore]);
 
     const login = async (username: string, password: string) => {
         const formData = new URLSearchParams();
@@ -46,10 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         const { access_token } = response.data;
-        setToken(access_token);
-
-        // Store token
-        localStorage.setItem('token', access_token);
+        loginToStore(access_token);
 
         // Fetch user profile
         const userResponse = await api.get('/auth/me', {
@@ -60,14 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const userData = userResponse.data;
         setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
+        loginToStore(access_token, userData);
     };
 
     const logout = () => {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        logoutFromStore();
     };
 
     const hasRole = (roles: UserRole[]): boolean => {

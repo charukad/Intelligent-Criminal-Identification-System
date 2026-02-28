@@ -1,35 +1,41 @@
 export interface Criminal {
     id: string;
-    full_name: string;
-    aliases?: string[];
+    first_name: string;
+    last_name: string;
+    aliases?: string;
     nic?: string;
-    date_of_birth?: string;
-    nationality?: string;
-    height?: number;
-    weight?: number;
-    eye_color?: string;
-    hair_color?: string;
-    identifying_marks?: string;
-    threat_level?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-    legal_status?: 'WANTED' | 'DETAINED' | 'CONVICTED' | 'RELEASED' | 'UNDER_INVESTIGATION';
-    last_known_location?: string;
-    mugshot_url?: string;
-    created_at?: string;
-    updated_at?: string;
+    dob?: string;
+    gender: string;
+    blood_type?: string;
+    status?: 'wanted' | 'in_custody' | 'released' | 'deceased' | 'cleared';
+    threat_level?: 'low' | 'medium' | 'high' | 'critical';
+    last_known_address?: string;
+    physical_description?: string;
+    primary_face_image_url?: string | null;
+}
+
+export interface CriminalFace {
+    id: string;
+    criminal_id: string;
+    image_url: string;
+    is_primary: boolean;
+    embedding_version: string;
+    created_at: string;
+    box: [number, number, number, number];
 }
 
 export interface CriminalFormData {
-    full_name: string;
+    first_name: string;
+    last_name: string;
     aliases?: string;
     nic?: string;
-    date_of_birth?: string;
-    nationality?: string;
-    height?: number;
-    weight?: number;
-    eye_color?: string;
-    hair_color?: string;
-    identifying_marks?: string;
+    dob?: string;
+    gender: string;
+    blood_type?: string;
+    status?: string;
     threat_level?: string;
-    legal_status?: string;
-    last_known_location?: string;
+    last_known_address?: string;
+    physical_description?: string;
+    faceFile?: File | null;
+    enrollFaceAsPrimary?: boolean;
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,26 +23,26 @@ import {
 import type { Criminal, CriminalFormData } from '@/types/criminal';
 
 const criminalSchema = z.object({
-    full_name: z.string().min(3, 'Name must be at least 3 characters'),
+    first_name: z.string().min(2, 'First name must be at least 2 characters'),
+    last_name: z.string().min(2, 'Last name must be at least 2 characters'),
     aliases: z.string().optional(),
     nic: z.string().optional(),
-    date_of_birth: z.string().optional(),
-    nationality: z.string().optional(),
-    height: z.coerce.number().positive().optional(),
-    weight: z.coerce.number().positive().optional(),
-    eye_color: z.string().optional(),
-    hair_color: z.string().optional(),
-    identifying_marks: z.string().optional(),
+    dob: z.string().optional(),
+    gender: z.string().min(1, 'Gender is required'),
+    blood_type: z.string().optional(),
     threat_level: z.string().optional(),
-    legal_status: z.string().optional(),
-    last_known_location: z.string().optional(),
+    status: z.string().optional(),
+    last_known_address: z.string().optional(),
+    physical_description: z.string().optional(),
 });
+
+type CriminalFields = z.infer<typeof criminalSchema>;
 
 interface CriminalDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     criminal?: Criminal;
-    onSubmit: (data: CriminalFormData) => void;
+    onSubmit: (data: CriminalFormData) => void | Promise<void>;
     isLoading?: boolean;
 }
 
@@ -53,6 +53,8 @@ export function CriminalDialog({
     onSubmit,
     isLoading,
 }: CriminalDialogProps) {
+    const [faceFile, setFaceFile] = useState<File | null>(null);
+    const [enrollFaceAsPrimary, setEnrollFaceAsPrimary] = useState(true);
     const {
         register,
         handleSubmit,
@@ -60,51 +62,63 @@ export function CriminalDialog({
         setValue,
         watch,
         formState: { errors },
-    } = useForm<CriminalFormData>({
+    } = useForm<CriminalFields>({
         resolver: zodResolver(criminalSchema),
     });
 
     const threatLevel = watch('threat_level');
-    const legalStatus = watch('legal_status');
+    const legalStatus = watch('status');
+    const gender = watch('gender');
 
     useEffect(() => {
         if (criminal) {
             reset({
-                full_name: criminal.full_name,
-                aliases: criminal.aliases?.join(', '),
+                first_name: criminal.first_name,
+                last_name: criminal.last_name,
+                aliases: criminal.aliases || '',
                 nic: criminal.nic || '',
-                date_of_birth: criminal.date_of_birth || '',
-                nationality: criminal.nationality || '',
-                height: criminal.height,
-                weight: criminal.weight,
-                eye_color: criminal.eye_color || '',
-                hair_color: criminal.hair_color || '',
-                identifying_marks: criminal.identifying_marks || '',
+                dob: criminal.dob || '',
+                gender: criminal.gender || '',
+                blood_type: criminal.blood_type || '',
                 threat_level: criminal.threat_level || '',
-                legal_status: criminal.legal_status || '',
-                last_known_location: criminal.last_known_location || '',
+                status: criminal.status || '',
+                last_known_address: criminal.last_known_address || '',
+                physical_description: criminal.physical_description || '',
             });
+            setFaceFile(null);
+            setEnrollFaceAsPrimary(true);
         } else {
             reset({
-                full_name: '',
+                first_name: '',
+                last_name: '',
                 aliases: '',
                 nic: '',
-                date_of_birth: '',
-                nationality: '',
-                height: undefined,
-                weight: undefined,
-                eye_color: '',
-                hair_color: '',
-                identifying_marks: '',
+                dob: '',
+                gender: '',
+                blood_type: '',
                 threat_level: '',
-                legal_status: '',
-                last_known_location: '',
+                status: '',
+                last_known_address: '',
+                physical_description: '',
             });
+            setFaceFile(null);
+            setEnrollFaceAsPrimary(true);
         }
     }, [criminal, reset]);
 
-    const handleFormSubmit = (data: CriminalFormData) => {
-        onSubmit(data);
+    useEffect(() => {
+        if (!open) {
+            setFaceFile(null);
+            setEnrollFaceAsPrimary(true);
+        }
+    }, [open]);
+
+    const handleFormSubmit = (data: CriminalFields) => {
+        onSubmit({
+            ...data,
+            faceFile,
+            enrollFaceAsPrimary,
+        });
     };
 
     return (
@@ -127,15 +141,28 @@ export function CriminalDialog({
                         <h3 className="text-sm font-semibold text-zinc-300">Personal Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="full_name">Full Name *</Label>
+                                <Label htmlFor="first_name">First Name *</Label>
                                 <Input
-                                    id="full_name"
-                                    {...register('full_name')}
-                                    placeholder="John Doe"
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    id="first_name"
+                                    {...register('first_name')}
+                                    placeholder="John"
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
-                                {errors.full_name && (
-                                    <p className="text-xs text-red-400">{errors.full_name.message}</p>
+                                {errors.first_name && (
+                                    <p className="text-xs text-red-400">{errors.first_name.message}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="last_name">Last Name *</Label>
+                                <Input
+                                    id="last_name"
+                                    {...register('last_name')}
+                                    placeholder="Doe"
+                                    className="bg-zinc-800 border-zinc-600"
+                                />
+                                {errors.last_name && (
+                                    <p className="text-xs text-red-400">{errors.last_name.message}</p>
                                 )}
                             </div>
 
@@ -145,7 +172,7 @@ export function CriminalDialog({
                                     id="aliases"
                                     {...register('aliases')}
                                     placeholder="Johnny, JD"
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
                             </div>
 
@@ -155,28 +182,39 @@ export function CriminalDialog({
                                     id="nic"
                                     {...register('nic')}
                                     placeholder="199012345678"
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="date_of_birth">Date of Birth</Label>
+                                <Label htmlFor="dob">Date of Birth</Label>
                                 <Input
-                                    id="date_of_birth"
+                                    id="dob"
                                     type="date"
-                                    {...register('date_of_birth')}
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    {...register('dob')}
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="nationality">Nationality</Label>
-                                <Input
-                                    id="nationality"
-                                    {...register('nationality')}
-                                    placeholder="Sri Lankan"
-                                    className="bg-zinc-900/50 border-zinc-800"
-                                />
+                                <Label htmlFor="gender">Gender *</Label>
+                                <input type="hidden" {...register('gender')} />
+                                <Select
+                                    value={gender}
+                                    onValueChange={(value) => setValue('gender', value)}
+                                >
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-600">
+                                        <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="female">Female</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.gender && (
+                                    <p className="text-xs text-red-400">{errors.gender.message}</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -186,54 +224,22 @@ export function CriminalDialog({
                         <h3 className="text-sm font-semibold text-zinc-300">Physical Characteristics</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="height">Height (cm)</Label>
+                                <Label htmlFor="blood_type">Blood Type</Label>
                                 <Input
-                                    id="height"
-                                    type="number"
-                                    {...register('height')}
-                                    placeholder="175"
-                                    className="bg-zinc-900/50 border-zinc-800"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="weight">Weight (kg)</Label>
-                                <Input
-                                    id="weight"
-                                    type="number"
-                                    {...register('weight')}
-                                    placeholder="70"
-                                    className="bg-zinc-900/50 border-zinc-800"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="eye_color">Eye Color</Label>
-                                <Input
-                                    id="eye_color"
-                                    {...register('eye_color')}
-                                    placeholder="Brown"
-                                    className="bg-zinc-900/50 border-zinc-800"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="hair_color">Hair Color</Label>
-                                <Input
-                                    id="hair_color"
-                                    {...register('hair_color')}
-                                    placeholder="Black"
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    id="blood_type"
+                                    {...register('blood_type')}
+                                    placeholder="O+"
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
                             </div>
 
                             <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="identifying_marks">Identifying Marks</Label>
+                                <Label htmlFor="physical_description">Physical Description</Label>
                                 <Input
-                                    id="identifying_marks"
-                                    {...register('identifying_marks')}
+                                    id="physical_description"
+                                    {...register('physical_description')}
                                     placeholder="Scar on left cheek, tattoo on right arm"
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
                             </div>
                         </div>
@@ -245,52 +251,89 @@ export function CriminalDialog({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="threat_level">Threat Level</Label>
+                                <input type="hidden" {...register('threat_level')} />
                                 <Select
                                     value={threatLevel}
                                     onValueChange={(value) => setValue('threat_level', value)}
                                 >
-                                    <SelectTrigger className="bg-zinc-900/50 border-zinc-800">
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-600">
                                         <SelectValue placeholder="Select threat level" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="LOW">Low</SelectItem>
-                                        <SelectItem value="MEDIUM">Medium</SelectItem>
-                                        <SelectItem value="HIGH">High</SelectItem>
-                                        <SelectItem value="CRITICAL">Critical</SelectItem>
+                                        <SelectItem value="low">Low</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="high">High</SelectItem>
+                                        <SelectItem value="critical">Critical</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="legal_status">Legal Status</Label>
+                                <Label htmlFor="status">Legal Status</Label>
+                                <input type="hidden" {...register('status')} />
                                 <Select
                                     value={legalStatus}
-                                    onValueChange={(value) => setValue('legal_status', value)}
+                                    onValueChange={(value) => setValue('status', value)}
                                 >
-                                    <SelectTrigger className="bg-zinc-900/50 border-zinc-800">
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-600">
                                         <SelectValue placeholder="Select legal status" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="WANTED">Wanted</SelectItem>
-                                        <SelectItem value="DETAINED">Detained</SelectItem>
-                                        <SelectItem value="CONVICTED">Convicted</SelectItem>
-                                        <SelectItem value="RELEASED">Released</SelectItem>
-                                        <SelectItem value="UNDER_INVESTIGATION">Under Investigation</SelectItem>
+                                        <SelectItem value="wanted">Wanted</SelectItem>
+                                        <SelectItem value="in_custody">In Custody</SelectItem>
+                                        <SelectItem value="released">Released</SelectItem>
+                                        <SelectItem value="deceased">Deceased</SelectItem>
+                                        <SelectItem value="cleared">Cleared</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="last_known_location">Last Known Location</Label>
+                                <Label htmlFor="last_known_address">Last Known Address</Label>
                                 <Input
-                                    id="last_known_location"
-                                    {...register('last_known_location')}
-                                    placeholder="Colombo, Sri Lanka"
-                                    className="bg-zinc-900/50 border-zinc-800"
+                                    id="last_known_address"
+                                    {...register('last_known_address')}
+                                    placeholder="No. 12, Main Street, Colombo"
+                                    className="bg-zinc-800 border-zinc-600"
                                 />
                             </div>
                         </div>
                     </div>
+
+                    {!criminal && (
+                        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
+                            <div>
+                                <h3 className="text-sm font-semibold text-zinc-200">Face Enrollment</h3>
+                                <p className="mt-1 text-xs text-zinc-500">
+                                    Upload a clear mugshot now to generate a TraceNet embedding for identification.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="face_image">Mugshot Image</Label>
+                                <Input
+                                    id="face_image"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="bg-zinc-800 border-zinc-600 file:text-zinc-300"
+                                    onChange={(event) => {
+                                        setFaceFile(event.target.files?.[0] ?? null);
+                                    }}
+                                />
+                                <p className="text-xs text-zinc-500">
+                                    {faceFile ? `Selected: ${faceFile.name}` : 'Optional. Add later if needed.'}
+                                </p>
+                            </div>
+                            <label className="flex items-center gap-3 text-sm text-zinc-300">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-primary"
+                                    checked={enrollFaceAsPrimary}
+                                    onChange={(event) => setEnrollFaceAsPrimary(event.target.checked)}
+                                />
+                                Mark this image as the primary face record
+                            </label>
+                        </div>
+                    )}
 
                     <DialogFooter>
                         <Button
@@ -302,7 +345,7 @@ export function CriminalDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                        <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
                             {isLoading ? (
                                 <>
                                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent"></div>

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Criminals from '@/pages/Criminals';
+import Identify from '@/pages/Identify';
+import Alerts from '@/pages/Alerts';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
@@ -22,8 +24,8 @@ function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="criminals" element={<Criminals />} />
-          <Route path="identify" element={<div>Identify Page (Coming Soon)</div>} />
-          <Route path="alerts" element={<div>Alerts Page (Coming Soon)</div>} />
+          <Route path="identify" element={<Identify />} />
+          <Route path="alerts" element={<Alerts />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

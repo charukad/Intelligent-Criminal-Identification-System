@@ -48,17 +48,19 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_stations_name'), 'stations', ['name'], unique=False)
-    # TODO: Enable face_embeddings after pgvector is properly installed
-    # op.create_table('face_embeddings',
-    # sa.Column('image_url', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    # sa.Column('is_primary', sa.Boolean(), nullable=False),
-    # sa.Column('embedding_version', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    # sa.Column('id', sa.Uuid(), nullable=False),
-    # sa.Column('criminal_id', sa.Uuid(), nullable=False),
-    # sa.Column('embedding', pgvector.sqlalchemy.vector.VECTOR(dim=512), nullable=True),
-    # sa.ForeignKeyConstraint(['criminal_id'], ['criminals.id'], ),
-    # sa.PrimaryKeyConstraint('id')
-    # )
+    # Enable vector extension first
+    op.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+
+    op.create_table('face_embeddings',
+    sa.Column('image_url', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('is_primary', sa.Boolean(), nullable=False),
+    sa.Column('embedding_version', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('criminal_id', sa.Uuid(), nullable=False),
+    sa.Column('embedding', pgvector.sqlalchemy.vector.VECTOR(dim=512), nullable=True),
+    sa.ForeignKeyConstraint(['criminal_id'], ['criminals.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('users',
     sa.Column('username', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -113,7 +115,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
-    # op.drop_table('face_embeddings')
+    op.drop_table('face_embeddings')
     op.drop_index(op.f('ix_stations_name'), table_name='stations')
     op.drop_table('stations')
     op.drop_index(op.f('ix_criminals_nic'), table_name='criminals')
