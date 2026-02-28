@@ -18,6 +18,15 @@ UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "faces"
 EMBEDDING_VERSION = "tracenet_v1"
 
 
+def delete_stored_face_image(image_url: str) -> None:
+    file_path = UPLOADS_DIR.parent.parent / image_url
+    if file_path.exists():
+        file_path.unlink()
+        parent_dir = file_path.parent
+        if parent_dir.exists() and not any(parent_dir.iterdir()):
+            parent_dir.rmdir()
+
+
 class FaceEnrollmentService:
     def __init__(
         self,
@@ -199,9 +208,4 @@ class FaceEnrollmentService:
         return str(file_path.relative_to(UPLOADS_DIR.parent.parent))
 
     def _delete_stored_image(self, image_url: str) -> None:
-        file_path = UPLOADS_DIR.parent.parent / image_url
-        if file_path.exists():
-            file_path.unlink()
-            parent_dir = file_path.parent
-            if parent_dir.exists() and not any(parent_dir.iterdir()):
-                parent_dir.rmdir()
+        delete_stored_face_image(image_url)

@@ -247,6 +247,78 @@ async def test_list_criminal_faces_returns_enrolled_faces(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_update_criminal_passes_update_data_to_repository(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    criminal_id = uuid4()
+    existing_criminal = SimpleNamespace(id=criminal_id, first_name="Old")
+    updated_criminal = SimpleNamespace(
+        id=criminal_id,
+        nic=None,
+        first_name="Updated",
+        last_name="Name",
+        aliases=None,
+        dob=None,
+        gender="male",
+        blood_type=None,
+        last_known_address=None,
+        status="wanted",
+        threat_level="medium",
+        physical_description=None,
+    )
+
+    repo = AsyncMock()
+    repo.get.return_value = existing_criminal
+    repo.update.return_value = updated_criminal
+    face_repo = AsyncMock()
+    face_repo.get_primary_faces_for_criminals.return_value = []
+
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: repo)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: face_repo)
+
+    result = await criminals_module.update_criminal(
+        criminal_id=criminal_id,
+        criminal_in=criminals_module.CriminalUpdate(first_name="Updated"),
+        current_user=SimpleNamespace(id=uuid4()),
+        db=AsyncMock(),
+    )
+
+    repo.update.assert_awaited_once_with(existing_criminal, {"first_name": "Updated"})
+    assert result["id"] == criminal_id
+    assert result["first_name"] == "Updated"
+
+
+@pytest.mark.asyncio
+async def test_delete_criminal_cleans_related_records_and_commits(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    criminal_id = uuid4()
+    criminal = SimpleNamespace(id=criminal_id)
+    face = SimpleNamespace(image_url="uploads/faces/sample.jpg")
+
+    repo = AsyncMock()
+    repo.get.return_value = criminal
+    face_repo = AsyncMock()
+    face_repo.list_by_criminal.return_value = [face]
+    db = AsyncMock()
+    delete_image = MagicMock()
+
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: repo)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: face_repo)
+    monkeypatch.setattr(criminals_module, "delete_stored_face_image", delete_image)
+
+    result = await criminals_module.delete_criminal(
+        criminal_id=criminal_id,
+        current_user=SimpleNamespace(id=uuid4()),
+        db=db,
+    )
+
+    delete_image.assert_called_once_with("uploads/faces/sample.jpg")
+    assert db.execute.await_count == 4
+    db.delete.assert_awaited_once_with(criminal)
+    db.commit.assert_awaited_once()
+    assert result == {"status": "success", "message": "Criminal record deleted"}
+
+
+@pytest.mark.asyncio
 async def test_delete_face_promotes_remaining_face(monkeypatch, tmp_path):
     criminal_id = uuid4()
     user_id = uuid4()
