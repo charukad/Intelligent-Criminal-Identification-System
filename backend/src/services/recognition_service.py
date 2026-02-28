@@ -10,6 +10,11 @@ from src.infrastructure.repositories.audit import AuditRepository
 from src.domain.models.audit import AuditLog
 from src.core.logging import logger
 
+
+DEFAULT_MATCH_THRESHOLD = 0.45
+DEFAULT_AMBIGUITY_MARGIN = 0.08
+
+
 class RecognitionService:
     def __init__(
         self,
@@ -23,7 +28,13 @@ class RecognitionService:
         self.criminal_repo = criminal_repo
         self.audit_repo = audit_repo
 
-    async def identify_suspects(self, image_bytes: bytes, threshold: float = 0.6) -> List[Dict[str, Any]]:
+    async def identify_suspects(
+        self,
+        image_bytes: bytes,
+        threshold: float = DEFAULT_MATCH_THRESHOLD,
+        ambiguity_margin: float = DEFAULT_AMBIGUITY_MARGIN,
+        single_face_only: bool = True,
+    ) -> List[Dict[str, Any]]:
         """
         End-to-end identification flow.
         1. Process image via AI Pipeline.
@@ -40,6 +51,8 @@ class RecognitionService:
         img_rgb = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
         
         processed_faces = self.pipeline.process_image(img_rgb)
+        if single_face_only and processed_faces:
+            processed_faces = [self._select_largest_face(processed_faces)]
         
         final_results = []
         
@@ -48,8 +61,7 @@ class RecognitionService:
             box = face_data['box']
             
             # Vector Search
-            # limit=1 means we just want the TOP match for this specific face
-            matches = await self.face_repo.find_nearest_neighbors(embedding, limit=1)
+            matches = await self.face_repo.find_nearest_neighbors(embedding, limit=5)
             
             if not matches:
                 final_results.append({
@@ -60,6 +72,10 @@ class RecognitionService:
                 continue
                 
             best_match_face, distance = matches[0]
+            second_best_other_distance = self._get_second_best_other_criminal_distance(
+                matches,
+                best_match_face.criminal_id,
+            )
             
             # Convert L2 distance to Confidence Score using calibrated Sigmoid function
             # FaceNet Euclidean distances: < 0.6 is a strong match, > 0.9 is weak.
@@ -68,11 +84,26 @@ class RecognitionService:
             confidence = float(confidence_float)
             
             if distance > threshold:
-                # No match found within threshold
                 final_results.append({
                     "box": box,
                     "status": "unknown",
-                    "confidence": confidence # Low
+                    "confidence": 0.0,
+                })
+                continue
+
+            if (
+                second_best_other_distance is not None
+                and (second_best_other_distance - distance) < ambiguity_margin
+            ):
+                logger.info(
+                    "Rejected ambiguous recognition candidate. best_distance=%.4f second_best_distance=%.4f",
+                    distance,
+                    second_best_other_distance,
+                )
+                final_results.append({
+                    "box": box,
+                    "status": "unknown",
+                    "confidence": 0.0,
                 })
                 continue
                 
@@ -99,3 +130,16 @@ class RecognitionService:
         await self.audit_repo.create(audit_entry)
         
         return final_results
+
+    def _select_largest_face(self, processed_faces: List[Dict[str, Any]]) -> Dict[str, Any]:
+        return max(processed_faces, key=lambda face: face["box"][2] * face["box"][3])
+
+    def _get_second_best_other_criminal_distance(
+        self,
+        matches: List[Any],
+        best_criminal_id: Any,
+    ) -> float | None:
+        for face_match, distance in matches[1:]:
+            if face_match.criminal_id != best_criminal_id:
+                return float(distance)
+        return None

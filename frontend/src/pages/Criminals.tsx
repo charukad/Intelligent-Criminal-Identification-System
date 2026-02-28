@@ -82,6 +82,11 @@ export default function Criminals() {
             criminalsApi.uploadFace(criminalId, file, isPrimary),
     });
 
+    const uploadFacesMutation = useMutation({
+        mutationFn: ({ criminalId, files, primaryIndex }: { criminalId: string; files: File[]; primaryIndex: number }) =>
+            criminalsApi.uploadFaces(criminalId, files, primaryIndex),
+    });
+
     const deleteFaceMutation = useMutation({
         mutationFn: ({ criminalId, faceId }: { criminalId: string; faceId: string }) =>
             criminalsApi.deleteFace(criminalId, faceId),
@@ -154,17 +159,29 @@ export default function Criminals() {
             onSuccess: async (createdCriminal) => {
                 queryClient.invalidateQueries({ queryKey: ['criminals'] });
 
-                if (data.faceFile) {
+                if (data.faceFiles && data.faceFiles.length > 0) {
                     try {
-                        await uploadFaceMutation.mutateAsync({
+                        const enrollmentResult = await uploadFacesMutation.mutateAsync({
                             criminalId: createdCriminal.id,
-                            file: data.faceFile,
-                            isPrimary: data.enrollFaceAsPrimary ?? true,
+                            files: data.faceFiles,
+                            primaryIndex: data.primaryFaceIndex ?? 0,
                         });
-                        setActionNotice({
-                            tone: 'success',
-                            message: 'Criminal profile and face enrollment completed.',
-                        });
+
+                        if (enrollmentResult.failed.length > 0) {
+                            const failedNames = enrollmentResult.failed.map((failure) => failure.fileName).join(', ');
+                            setActionNotice({
+                                tone: enrollmentResult.uploaded.length > 0 ? 'warning' : 'error',
+                                message:
+                                    enrollmentResult.uploaded.length > 0
+                                        ? `Criminal profile created. ${enrollmentResult.uploaded.length} face image(s) enrolled, but these failed: ${failedNames}.`
+                                        : `Criminal profile created, but face enrollment failed for: ${failedNames}.`,
+                            });
+                        } else {
+                            setActionNotice({
+                                tone: 'success',
+                                message: `Criminal profile and ${enrollmentResult.uploaded.length} face image(s) were enrolled successfully.`,
+                            });
+                        }
                     } catch (uploadError: any) {
                         setActionNotice({
                             tone: 'warning',
@@ -449,7 +466,12 @@ export default function Criminals() {
                 }}
                 criminal={editingCriminal}
                 onSubmit={editingCriminal ? handleUpdate : handleCreate}
-                isLoading={createMutation.isPending || uploadFaceMutation.isPending || updateMutation.isPending}
+                isLoading={
+                    createMutation.isPending ||
+                    uploadFaceMutation.isPending ||
+                    uploadFacesMutation.isPending ||
+                    updateMutation.isPending
+                }
             />
 
             {/* Delete Confirmation Dialog */}
