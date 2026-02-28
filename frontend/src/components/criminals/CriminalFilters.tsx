@@ -56,7 +56,7 @@ export function CriminalFilters({
             <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                 <Input
-                    placeholder="Search by name, NIC, or case number..."
+                    placeholder="Search by name or NIC..."
                     value={search}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-10"
@@ -71,10 +71,10 @@ export function CriminalFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Threat Levels</SelectItem>
-                        <SelectItem value="LOW">Low</SelectItem>
-                        <SelectItem value="MEDIUM">Medium</SelectItem>
-                        <SelectItem value="HIGH">High</SelectItem>
-                        <SelectItem value="CRITICAL">Critical</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -85,11 +85,11 @@ export function CriminalFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="WANTED">Wanted</SelectItem>
-                        <SelectItem value="DETAINED">Detained</SelectItem>
-                        <SelectItem value="CONVICTED">Convicted</SelectItem>
-                        <SelectItem value="RELEASED">Released</SelectItem>
-                        <SelectItem value="UNDER_INVESTIGATION">Under Investigation</SelectItem>
+                        <SelectItem value="wanted">Wanted</SelectItem>
+                        <SelectItem value="in_custody">In Custody</SelectItem>
+                        <SelectItem value="released">Released</SelectItem>
+                        <SelectItem value="deceased">Deceased</SelectItem>
+                        <SelectItem value="cleared">Cleared</SelectItem>
                     </SelectContent>
                 </Select>
 

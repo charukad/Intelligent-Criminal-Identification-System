@@ -1,9 +1,13 @@
 from typing import List, Dict, Any
+import cv2
+import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.ai.pipeline import FaceProcessingPipeline
 from src.infrastructure.repositories.face import FaceRepository
 from src.infrastructure.repositories.criminal import CriminalRepository
+from src.infrastructure.repositories.audit import AuditRepository
+from src.domain.models.audit import AuditLog
 from src.core.logging import logger
 
 class RecognitionService:
@@ -11,11 +15,13 @@ class RecognitionService:
         self,
         pipeline: FaceProcessingPipeline,
         face_repo: FaceRepository,
-        criminal_repo: CriminalRepository
+        criminal_repo: CriminalRepository,
+        audit_repo: AuditRepository
     ):
         self.pipeline = pipeline
         self.face_repo = face_repo
         self.criminal_repo = criminal_repo
+        self.audit_repo = audit_repo
 
     async def identify_suspects(self, image_bytes: bytes, threshold: float = 0.6) -> List[Dict[str, Any]]:
         """
@@ -24,12 +30,11 @@ class RecognitionService:
         2. Query Vector DB for matches.
         3. Enrich with Criminal Profile data.
         """
-        # Convert bytes to numpy (Need opencv or numpy decode)
-        import cv2
-        import numpy as np
-        
+        # Convert bytes to numpy
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_np is None:
+            raise ValueError("Invalid image data")
         
         # Convert BGR to RGB (OpenCV default is BGR, AI usually expects RGB or handles it)
         img_rgb = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
@@ -47,15 +52,20 @@ class RecognitionService:
             matches = await self.face_repo.find_nearest_neighbors(embedding, limit=1)
             
             if not matches:
+                final_results.append({
+                    "box": box,
+                    "status": "unknown",
+                    "confidence": 0.0
+                })
                 continue
                 
             best_match_face, distance = matches[0]
             
-            # Convert L2 distance to Confidence Score (Inverse relationship)
-            # Thresholding logic: (Euclidean distance for FaceNet is roughly 0 to <1.5)
-            # Heuristic: confidence = max(0, (1 - distance / 2.0)) * 100
-            # Note: This is arbitrary and needs tuning.
-            confidence = max(0.0, (1.2 - distance) / 1.2) * 100
+            # Convert L2 distance to Confidence Score using calibrated Sigmoid function
+            # FaceNet Euclidean distances: < 0.6 is a strong match, > 0.9 is weak.
+            # This sigmoid centers around 0.65 mapping distance to a 0-100% curve.
+            confidence_float = 100.0 / (1.0 + np.exp(10.0 * (distance - 0.65)))
+            confidence = float(confidence_float)
             
             if distance > threshold:
                 # No match found within threshold
@@ -81,4 +91,11 @@ class RecognitionService:
                 }
             })
             
+        # Log the action
+        audit_entry = AuditLog(
+            action="IDENTIFY",
+            details=f"Processed image and found {len([r for r in final_results if r['status'] == 'match'])} matches."
+        )
+        await self.audit_repo.create(audit_entry)
+        
         return final_results

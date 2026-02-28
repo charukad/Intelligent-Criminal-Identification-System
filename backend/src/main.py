@@ -1,6 +1,8 @@
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.core.config import settings
 from src.core.logging import logger
@@ -21,6 +23,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
 # CORS Security
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
@@ -38,6 +44,27 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 async def root():
     return {"message": "Welcome to TraceIQ API", "status": "running"}
 
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from src.infrastructure.database import get_db
+
 @app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+async def health_check(db: AsyncSession = Depends(get_db)):
+    try:
+        # Check DB connectivity
+        await db.execute(text("SELECT 1"))
+        db_status = "online"
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        db_status = "offline"
+        
+    status = "ok" if db_status == "online" else "degraded"
+    
+    return {
+        "status": status,
+        "services": {
+            "database": db_status,
+            "api": "online"
+        }
+    }

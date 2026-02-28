@@ -7,6 +7,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
+    proxy: {
+      '/api': 'http://localhost:8000',
+      '/uploads': 'http://localhost:8000',
+    },
   },
   resolve: {
     alias: {

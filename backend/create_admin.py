@@ -12,7 +12,7 @@ async def create_admin():
     async with async_session() as session:
         admin = User(
             username='admin',
-            email='admin@traceiq.local',
+            email='admin@traceiq.com',
             hashed_password=get_password_hash('admin123'),
             role=UserRole.ADMIN,
             is_active=True,

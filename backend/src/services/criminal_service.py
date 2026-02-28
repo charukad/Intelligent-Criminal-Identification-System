@@ -59,7 +59,7 @@ class CriminalService:
         """
         Performs a search for criminals by name or NIC.
         """
-        return await self.criminal_repo.search_by_name(query)
+        return await self.criminal_repo.search_by_name_or_nic(query)
 
     async def update_threat_level(self, criminal_id: uuid.UUID, level: ThreatLevel) -> Criminal:
         criminal = await self.get_criminal_details(criminal_id)

@@ -1,32 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Users, ShieldAlert, Activity, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-interface StatsData {
-    totalCriminals: number;
-    criticalAlerts: number;
-    recentIdentifications: number;
-    activeInvestigations: number;
-}
+import { statsApi } from '@/api/stats';
+import { healthApi } from '@/api/health';
 
 export default function Dashboard() {
-    const [stats, setStats] = useState<StatsData>({
-        totalCriminals: 0,
-        criticalAlerts: 0,
-        recentIdentifications: 0,
-        activeInvestigations: 0,
+    const { data: stats } = useQuery({
+        queryKey: ['dashboardStats'],
+        queryFn: statsApi.getDashboardStats,
+        initialData: {
+            totalCriminals: 0,
+            criticalAlerts: 0,
+            recentIdentifications: 0,
+            activeInvestigations: 0,
+        },
+        refetchInterval: 10000 // refresh every 10s
     });
 
-    useEffect(() => {
-        // TODO: Fetch real stats from API
-        // For now, using mock data
-        setStats({
-            totalCriminals: 1247,
-            criticalAlerts: 8,
-            recentIdentifications: 34,
-            activeInvestigations: 156,
-        });
-    }, []);
+    const { data: health } = useQuery({
+        queryKey: ['systemHealth'],
+        queryFn: healthApi.getHealth,
+        initialData: {
+            status: 'degraded',
+            services: { database: 'offline', api: 'offline' }
+        },
+        refetchInterval: 30000 // refresh every 30s
+    });
 
     const statCards = [
         {
@@ -34,7 +33,6 @@ export default function Dashboard() {
             value: stats.totalCriminals.toLocaleString(),
             description: 'Registered in database',
             icon: Users,
-            trend: '+12% from last month',
             color: 'text-blue-500',
         },
         {
@@ -42,7 +40,6 @@ export default function Dashboard() {
             value: stats.criticalAlerts,
             description: 'High-threat suspects',
             icon: ShieldAlert,
-            trend: '-3 from last week',
             color: 'text-red-500',
         },
         {
@@ -50,7 +47,6 @@ export default function Dashboard() {
             value: stats.recentIdentifications,
             description: 'Last 24 hours',
             icon: Activity,
-            trend: '+8 since yesterday',
             color: 'text-green-500',
         },
         {
@@ -58,7 +54,6 @@ export default function Dashboard() {
             value: stats.activeInvestigations,
             description: 'Ongoing investigations',
             icon: TrendingUp,
-            trend: 'Stable',
             color: 'text-yellow-500',
         },
     ];
@@ -84,7 +79,6 @@ export default function Dashboard() {
                         <CardContent>
                             <div className="text-2xl font-bold">{stat.value}</div>
                             <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                            <p className="text-xs text-muted-foreground mt-2 opacity-70">{stat.trend}</p>
                         </CardContent>
                     </Card>
                 ))}
@@ -98,23 +92,8 @@ export default function Dashboard() {
                         <CardDescription>Latest facial recognition matches</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="flex items-center justify-between border-b pb-3 last:border-0">
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-medium">Suspect #{1000 + i}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Matched at {i === 1 ? 'Central Station' : i === 2 ? 'Airport Terminal' : 'City Mall'}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-muted-foreground">{i}h ago</p>
-                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-red-50 text-red-700 dark:bg-red-950/20">
-                                            {i === 1 ? 'Critical' : 'Medium'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+                            No recent identifications to show yet.
                         </div>
                     </CardContent>
                 </Card>
@@ -127,29 +106,28 @@ export default function Dashboard() {
                     <CardContent>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm">Face Detection Service</span>
+                                <span className="text-sm">Database Access</span>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                    <span className="text-xs text-muted-foreground">Online</span>
+                                    <div className={`w-2 h-2 rounded-full ${health.services.database === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                                    <span className="text-xs text-muted-foreground capitalize">{health.services.database}</span>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm">Vector Database</span>
+                                <span className="text-sm">Server API</span>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                    <span className="text-xs text-muted-foreground">Online</span>
+                                    <div className={`w-2 h-2 rounded-full ${health.services.api === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                                    <span className="text-xs text-muted-foreground capitalize">{health.services.api}</span>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm">Recognition API</span>
+                                <span className="text-sm">System Status</span>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                    <span className="text-xs text-muted-foreground">Online</span>
+                                    <div className={`w-2 h-2 rounded-full ${health.status === 'ok' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+                                    <span className="text-xs text-muted-foreground capitalize">{health.status === 'ok' ? 'nominal' : health.status}</span>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t">
-                                <span className="text-sm font-medium">Database Size</span>
-                                <span className="text-sm text-muted-foreground">1,247 profiles</span>
+                                <span className="text-sm text-muted-foreground">{stats.totalCriminals.toLocaleString()} profiles</span>
                             </div>
                         </div>
                     </CardContent>

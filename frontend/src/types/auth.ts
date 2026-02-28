@@ -1,11 +1,4 @@
-export interface User {
-    id: string;
-    username: string;
-    email: string;
-    role: "admin" | "senior_officer" | "field_officer" | "viewer";
-    is_active: boolean;
-    station_id?: string;
-}
+import type { User } from '@/types/user';
 
 export interface AuthResponse {
     access_token: string;
@@ -16,7 +9,10 @@ export interface AuthState {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
-    login: (token: string) => void;
+    hasHydrated: boolean;
+    setHasHydrated: (value: boolean) => void;
+    login: (token: string, user?: User) => void;
     logout: () => void;
-    setUser: (user: User) => void;
+    setUser: (user: User | null) => void;
+    setToken: (token: string | null) => void;
 }

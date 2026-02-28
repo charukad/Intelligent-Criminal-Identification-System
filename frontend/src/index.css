@@ -73,4 +73,30 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Role-based theming (dashboard area only) */
+  .role-admin {
+    --primary: 0 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 70% 45%;
+    --accent: 0 40% 92%;
+    --accent-foreground: 0 0% 12%;
+    --border: 0 25% 85%;
+  }
+  .role-senior {
+    --primary: 38 85% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 38 85% 45%;
+    --accent: 38 40% 92%;
+    --accent-foreground: 0 0% 12%;
+    --border: 38 25% 85%;
+  }
+  .role-field {
+    --primary: 210 80% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 210 80% 45%;
+    --accent: 210 35% 92%;
+    --accent-foreground: 0 0% 12%;
+    --border: 210 25% 85%;
+  }
 }
