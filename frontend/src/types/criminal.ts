@@ -36,6 +36,6 @@ export interface CriminalFormData {
     threat_level?: string;
     last_known_address?: string;
     physical_description?: string;
-    faceFile?: File | null;
-    enrollFaceAsPrimary?: boolean;
+    faceFiles?: File[];
+    primaryFaceIndex?: number;
 }

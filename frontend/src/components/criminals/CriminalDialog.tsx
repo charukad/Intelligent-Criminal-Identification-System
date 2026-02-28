@@ -20,6 +20,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { FaceEnrollmentPicker } from '@/components/criminals/FaceEnrollmentPicker';
+import {
+    renderCroppedFaceFile,
+    revokeFaceCropDrafts,
+    type FaceCropDraft,
+} from '@/lib/faceCrop';
 import type { Criminal, CriminalFormData } from '@/types/criminal';
 
 const criminalSchema = z.object({
@@ -53,8 +59,10 @@ export function CriminalDialog({
     onSubmit,
     isLoading,
 }: CriminalDialogProps) {
-    const [faceFile, setFaceFile] = useState<File | null>(null);
-    const [enrollFaceAsPrimary, setEnrollFaceAsPrimary] = useState(true);
+    const [faceDrafts, setFaceDrafts] = useState<FaceCropDraft[]>([]);
+    const [primaryFaceIndex, setPrimaryFaceIndex] = useState(-1);
+    const [cropError, setCropError] = useState<string | null>(null);
+    const [isPreparingImages, setIsPreparingImages] = useState(false);
     const {
         register,
         handleSubmit,
@@ -85,8 +93,10 @@ export function CriminalDialog({
                 last_known_address: criminal.last_known_address || '',
                 physical_description: criminal.physical_description || '',
             });
-            setFaceFile(null);
-            setEnrollFaceAsPrimary(true);
+            revokeFaceCropDrafts(faceDrafts);
+            setFaceDrafts([]);
+            setPrimaryFaceIndex(-1);
+            setCropError(null);
         } else {
             reset({
                 first_name: '',
@@ -101,24 +111,47 @@ export function CriminalDialog({
                 last_known_address: '',
                 physical_description: '',
             });
-            setFaceFile(null);
-            setEnrollFaceAsPrimary(true);
+            revokeFaceCropDrafts(faceDrafts);
+            setFaceDrafts([]);
+            setPrimaryFaceIndex(-1);
+            setCropError(null);
         }
     }, [criminal, reset]);
 
     useEffect(() => {
         if (!open) {
-            setFaceFile(null);
-            setEnrollFaceAsPrimary(true);
+            revokeFaceCropDrafts(faceDrafts);
+            setFaceDrafts([]);
+            setPrimaryFaceIndex(-1);
+            setCropError(null);
         }
     }, [open]);
 
-    const handleFormSubmit = (data: CriminalFields) => {
-        onSubmit({
-            ...data,
-            faceFile,
-            enrollFaceAsPrimary,
-        });
+    useEffect(() => {
+        return () => revokeFaceCropDrafts(faceDrafts);
+    }, []);
+
+    const handleFormSubmit = async (data: CriminalFields) => {
+        setCropError(null);
+        setIsPreparingImages(true);
+
+        try {
+            const faceFiles =
+                !criminal && faceDrafts.length > 0
+                    ? await Promise.all(faceDrafts.map((draft) => renderCroppedFaceFile(draft)))
+                    : [];
+
+            await onSubmit({
+                ...data,
+                faceFiles,
+                primaryFaceIndex: faceFiles.length > 0 ? Math.max(primaryFaceIndex, 0) : undefined,
+            });
+        } catch (error) {
+            console.error(error);
+            setCropError('Failed to prepare one or more cropped face images. Please adjust the selection and try again.');
+        } finally {
+            setIsPreparingImages(false);
+        }
     };
 
     return (
@@ -301,55 +334,32 @@ export function CriminalDialog({
                     </div>
 
                     {!criminal && (
-                        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
-                            <div>
-                                <h3 className="text-sm font-semibold text-zinc-200">Face Enrollment</h3>
-                                <p className="mt-1 text-xs text-zinc-500">
-                                    Upload a clear mugshot now to generate a TraceNet embedding for identification.
-                                </p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="face_image">Mugshot Image</Label>
-                                <Input
-                                    id="face_image"
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    className="bg-zinc-800 border-zinc-600 file:text-zinc-300"
-                                    onChange={(event) => {
-                                        setFaceFile(event.target.files?.[0] ?? null);
-                                    }}
-                                />
-                                <p className="text-xs text-zinc-500">
-                                    {faceFile ? `Selected: ${faceFile.name}` : 'Optional. Add later if needed.'}
-                                </p>
-                            </div>
-                            <label className="flex items-center gap-3 text-sm text-zinc-300">
-                                <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-primary"
-                                    checked={enrollFaceAsPrimary}
-                                    onChange={(event) => setEnrollFaceAsPrimary(event.target.checked)}
-                                />
-                                Mark this image as the primary face record
-                            </label>
-                        </div>
+                        <FaceEnrollmentPicker
+                            drafts={faceDrafts}
+                            primaryIndex={primaryFaceIndex}
+                            onDraftsChange={setFaceDrafts}
+                            onPrimaryIndexChange={setPrimaryFaceIndex}
+                            disabled={isLoading || isPreparingImages}
+                        />
                     )}
+
+                    {cropError && <p className="text-sm text-red-400">{cropError}</p>}
 
                     <DialogFooter>
                         <Button
                             type="button"
                             variant="outline"
                             onClick={() => onOpenChange(false)}
-                            disabled={isLoading}
+                            disabled={isLoading || isPreparingImages}
                             className="border-zinc-700"
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                            {isLoading ? (
+                        <Button type="submit" disabled={isLoading || isPreparingImages} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                            {isLoading || isPreparingImages ? (
                                 <>
                                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent"></div>
-                                    Saving...
+                                    {isPreparingImages ? 'Preparing Faces...' : 'Saving...'}
                                 </>
                             ) : criminal ? (
                                 'Update Criminal'

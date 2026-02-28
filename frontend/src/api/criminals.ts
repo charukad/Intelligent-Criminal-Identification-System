@@ -30,6 +30,16 @@ export interface CreateCriminalData {
     physical_description?: string;
 }
 
+export interface FaceUploadFailure {
+    fileName: string;
+    detail: string;
+}
+
+export interface FaceBatchUploadResult {
+    uploaded: CriminalFace[];
+    failed: FaceUploadFailure[];
+}
+
 export const criminalsApi = {
     // Get paginated list of criminals
     getAll: async (params: CriminalsListParams = {}): Promise<CriminalsListResponse> => {
@@ -74,6 +84,37 @@ export const criminalsApi = {
             },
         });
         return data;
+    },
+
+    uploadFaces: async (criminalId: string, files: File[], primaryIndex = 0): Promise<FaceBatchUploadResult> => {
+        const uploaded: CriminalFace[] = [];
+        const failed: FaceUploadFailure[] = [];
+        let primaryWasUploaded = false;
+
+        for (const [index, file] of files.entries()) {
+            try {
+                const response = await criminalsApi.uploadFace(criminalId, file, index === primaryIndex);
+                if (index === primaryIndex) {
+                    primaryWasUploaded = true;
+                }
+                uploaded.push(response);
+            } catch (error: any) {
+                failed.push({
+                    fileName: file.name,
+                    detail: error?.response?.data?.detail || 'Face enrollment failed',
+                });
+            }
+        }
+
+        if (!primaryWasUploaded && uploaded.length > 0) {
+            await criminalsApi.setPrimaryFace(criminalId, uploaded[0].id);
+            uploaded[0] = {
+                ...uploaded[0],
+                is_primary: true,
+            };
+        }
+
+        return { uploaded, failed };
     },
 
     listFaces: async (criminalId: string): Promise<CriminalFace[]> => {
