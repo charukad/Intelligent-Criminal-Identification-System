@@ -2,6 +2,7 @@ from typing import Any, List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete as sa_delete
 from sqlmodel import select, col, func
 
 from src.infrastructure.database import get_db
@@ -9,12 +10,16 @@ from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.face import FaceRepository
 from src.infrastructure.repositories.audit import AuditRepository
 from src.services.criminal_service import CriminalService
-from src.services.face_enrollment_service import FaceEnrollmentService
+from src.services.face_enrollment_service import FaceEnrollmentService, delete_stored_face_image
 from src.services.ai.runtime import pipeline
 from src.schemas.criminal import CriminalCreate, CriminalResponse, CriminalUpdate, CriminalListResponse, CriminalFaceResponse
 from src.api.deps import get_current_user, get_officer_or_above, get_admin_or_senior_officer
 from src.domain.models.user import User
 from src.domain.models.criminal import Criminal, ThreatLevel, LegalStatus
+from src.domain.models.face import FaceEmbedding
+from src.domain.models.audit import AuditLog
+from src.domain.models.alert import Alert
+from src.domain.models.case import Offense
 
 router = APIRouter()
 
@@ -180,10 +185,7 @@ async def update_criminal(
     
     # Update fields
     update_data = criminal_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(criminal, field, value)
-    
-    updated = await repo.update(criminal)
+    updated = await repo.update(criminal, update_data)
     face_repo = FaceRepository(db)
     primary_faces = await face_repo.get_primary_faces_for_criminals([updated.id])
     primary_face_image_url = primary_faces[0].image_url if primary_faces else None
@@ -200,13 +202,22 @@ async def delete_criminal(
     Requires: Admin or Senior Officer role.
     """
     repo = CriminalRepository(db)
-    service = CriminalService(repo)
-    
     criminal = await repo.get(criminal_id)
     if not criminal:
         raise HTTPException(status_code=404, detail="Criminal not found")
-    
-    await repo.delete(criminal_id)
+
+    face_repo = FaceRepository(db)
+    faces = await face_repo.list_by_criminal(criminal_id)
+    for face in faces:
+        delete_stored_face_image(face.image_url)
+
+    await db.execute(sa_delete(FaceEmbedding).where(FaceEmbedding.criminal_id == criminal_id))
+    await db.execute(sa_delete(AuditLog).where(AuditLog.criminal_id == criminal_id))
+    await db.execute(sa_delete(Alert).where(Alert.criminal_id == criminal_id))
+    await db.execute(sa_delete(Offense).where(Offense.criminal_id == criminal_id))
+    await db.delete(criminal)
+    await db.commit()
+
     return {"status": "success", "message": "Criminal record deleted"}
 
 
