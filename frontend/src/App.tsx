@@ -4,6 +4,7 @@ import Dashboard from '@/pages/Dashboard';
 import Criminals from '@/pages/Criminals';
 import Identify from '@/pages/Identify';
 import Alerts from '@/pages/Alerts';
+import ReviewQueue from '@/pages/ReviewQueue';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="criminals" element={<Criminals />} />
           <Route path="identify" element={<Identify />} />
           <Route path="alerts" element={<Alerts />} />
+          <Route path="review-queue" element={<ReviewQueue />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

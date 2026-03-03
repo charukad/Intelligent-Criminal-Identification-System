@@ -8,6 +8,7 @@ import { criminalsApi } from '@/api/criminals';
 import { buildBackendUrl } from '@/api/client';
 import type { CriminalsListParams } from '@/api/criminals';
 import type { Criminal, CriminalFace, CriminalFormData } from '@/types/criminal';
+import type { DuplicateReviewSummary } from '@/types/review';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -73,6 +74,74 @@ function formatMetricValue(value: number, suffix = '') {
         return 'Unavailable';
     }
     return `${value.toFixed(1)}${suffix}`;
+}
+
+function buildDuplicateReviewMessage(summary: DuplicateReviewSummary, fileName?: string) {
+    const prefix = fileName ? `${fileName}: ` : '';
+    return (
+        `${prefix}${summary.risk_level === 'probable_duplicate' ? 'Probable duplicate' : 'Needs review'} ` +
+        `with ${summary.conflicting_criminal.name} at distance ${summary.distance.toFixed(6)}. ` +
+        `Review case ${summary.review_case_id}.`
+    );
+}
+
+function buildEnrollmentNotice(
+    uploaded: CriminalFace[],
+    failed: { fileName: string; detail: string; duplicateReview?: DuplicateReviewSummary }[],
+) {
+    const acceptedWithReview = uploaded
+        .filter((face) => face.duplicate_review)
+        .map((face) => buildDuplicateReviewMessage(face.duplicate_review!, face.image_url.split('/').pop()));
+    const blockedDuplicates = failed
+        .filter((failure) => failure.duplicateReview)
+        .map((failure) => buildDuplicateReviewMessage(failure.duplicateReview!, failure.fileName));
+    const genericFailures = failed
+        .filter((failure) => !failure.duplicateReview)
+        .map((failure) => `${failure.fileName}: ${failure.detail}`);
+
+    const detailParts = [...acceptedWithReview, ...blockedDuplicates, ...genericFailures];
+
+    if (detailParts.length === 0) {
+        return {
+            tone: 'success' as const,
+            message: `Criminal profile and ${uploaded.length} face image(s) were enrolled successfully.`,
+        };
+    }
+
+    return {
+        tone: uploaded.length > 0 ? ('warning' as const) : ('error' as const),
+        message:
+            (uploaded.length > 0
+                ? `Criminal profile created. ${uploaded.length} face image(s) enrolled with review warnings or partial failures. `
+                : 'Criminal profile created, but face enrollment raised duplicate or upload issues. ') +
+            detailParts.join(' '),
+    };
+}
+
+function getUploadErrorMessage(error: any) {
+    const detail = error?.response?.data?.detail;
+    if (typeof detail === 'string') {
+        return detail;
+    }
+    if (detail?.review_case_id && detail?.conflicting_criminal?.name) {
+        return buildDuplicateReviewMessage(
+            {
+                review_case_id: String(detail.review_case_id),
+                risk_level: detail.risk_level,
+                distance: Number(detail.distance ?? 0),
+                conflicting_criminal: {
+                    id: String(detail.conflicting_criminal.id),
+                    name: detail.conflicting_criminal.name,
+                    primary_face_image_url: detail.conflicting_criminal.primary_face_image_url ?? null,
+                },
+                status: 'open',
+            },
+        );
+    }
+    if (detail?.message) {
+        return detail.message;
+    }
+    return 'Failed to upload the face image. Please try again.';
 }
 
 export default function Criminals() {
@@ -219,28 +288,11 @@ export default function Criminals() {
                             files: data.faceFiles,
                             primaryIndex: data.primaryFaceIndex ?? 0,
                         });
-
-                        if (enrollmentResult.failed.length > 0) {
-                            const failedNames = enrollmentResult.failed.map((failure) => failure.fileName).join(', ');
-                            setActionNotice({
-                                tone: enrollmentResult.uploaded.length > 0 ? 'warning' : 'error',
-                                message:
-                                    enrollmentResult.uploaded.length > 0
-                                        ? `Criminal profile created. ${enrollmentResult.uploaded.length} face image(s) enrolled, but these failed: ${failedNames}.`
-                                        : `Criminal profile created, but face enrollment failed for: ${failedNames}.`,
-                            });
-                        } else {
-                            setActionNotice({
-                                tone: 'success',
-                                message: `Criminal profile and ${enrollmentResult.uploaded.length} face image(s) were enrolled successfully.`,
-                            });
-                        }
+                        setActionNotice(buildEnrollmentNotice(enrollmentResult.uploaded, enrollmentResult.failed));
                     } catch (uploadError: any) {
                         setActionNotice({
                             tone: 'warning',
-                            message:
-                                uploadError?.response?.data?.detail ||
-                                'Criminal profile created, but face enrollment failed. You can upload the mugshot later.',
+                            message: getUploadErrorMessage(uploadError),
                         });
                     }
                 } else {
@@ -294,8 +346,9 @@ export default function Criminals() {
         }
 
         setActionNotice(null);
+        const currentFileName = existingFaceFile.name;
         try {
-            await uploadFaceMutation.mutateAsync({
+            const enrolledFace = await uploadFaceMutation.mutateAsync({
                 criminalId: viewingCriminal.id,
                 file: existingFaceFile,
                 isPrimary: existingFacePrimary,
@@ -303,16 +356,23 @@ export default function Criminals() {
             await queryClient.invalidateQueries({ queryKey: ['criminalFaces', viewingCriminal.id] });
             setExistingFaceFile(null);
             setExistingFacePrimary(true);
-            setActionNotice({
-                tone: 'success',
-                message: 'Face image uploaded for the selected criminal.',
-            });
+            if (enrolledFace.duplicate_review) {
+                setActionNotice({
+                    tone: 'warning',
+                    message:
+                        'Face image uploaded, but the system flagged a duplicate review. ' +
+                        buildDuplicateReviewMessage(enrolledFace.duplicate_review, currentFileName),
+                });
+            } else {
+                setActionNotice({
+                    tone: 'success',
+                    message: 'Face image uploaded for the selected criminal.',
+                });
+            }
         } catch (uploadError: any) {
             setActionNotice({
-                tone: 'error',
-                message:
-                    uploadError?.response?.data?.detail ||
-                    'Failed to upload the face image. Please try again.',
+                tone: uploadError?.response?.status === 409 ? 'warning' : 'error',
+                message: getUploadErrorMessage(uploadError),
             });
         }
     };

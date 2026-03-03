@@ -8,6 +8,7 @@ from src.domain.models.case import Case, CaseStatus, Offense
 # Import face model when pgvector is available
 from src.domain.models.face import FaceEmbedding
 from src.domain.models.identity_template import IdentityTemplate
+from src.domain.models.review_case import ReviewCase, ReviewCaseStatus, ReviewCaseType, DuplicateRiskLevel
 
 __all__ = [
     "Station",
@@ -17,6 +18,10 @@ __all__ = [
     "UserBase",
     "Criminal",
     "IdentityTemplate",
+    "ReviewCase",
+    "ReviewCaseStatus",
+    "ReviewCaseType",
+    "DuplicateRiskLevel",
     "Case",
     "CaseStatus",
     "Offense",

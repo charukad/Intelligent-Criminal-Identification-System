@@ -6,6 +6,7 @@ import {
     Search,
     LogOut,
     LayoutDashboard,
+    ClipboardList,
     Menu,
     X
 } from 'lucide-react';
@@ -57,6 +58,9 @@ export default function DashboardLayout() {
         { icon: Search, label: 'Identify', href: '/dashboard/identify' },
         { icon: ShieldAlert, label: 'Alerts', href: '/dashboard/alerts' },
     ];
+    if (role === 'admin' || role === 'senior_officer') {
+        navItems.push({ icon: ClipboardList, label: 'Review Queue', href: '/dashboard/review-queue' });
+    }
 
     return (
         <div className={cn("min-h-screen bg-background flex", roleClass)}>

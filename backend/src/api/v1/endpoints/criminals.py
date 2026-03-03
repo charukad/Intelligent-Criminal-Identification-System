@@ -10,14 +10,20 @@ from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.face import FaceRepository
 from src.infrastructure.repositories.identity_template import IdentityTemplateRepository
 from src.infrastructure.repositories.audit import AuditRepository
+from src.infrastructure.repositories.review_case import ReviewCaseRepository
 from src.services.criminal_service import CriminalService
 from src.services.ai.face_quality import sort_quality_warnings
+from src.services.duplicate_identity_service import (
+    DuplicateIdentityConflictError,
+    DuplicateIdentityService,
+)
 from src.services.face_quality_service import FaceQualityService
 from src.services.face_enrollment_service import FaceEnrollmentService, delete_stored_face_image
 from src.services.identity_template_service import IdentityTemplateService
 from src.services.ai.runtime import pipeline
 from src.schemas.criminal import CriminalCreate, CriminalResponse, CriminalUpdate, CriminalListResponse, CriminalFaceResponse
 from src.schemas.face_quality import FaceQualityPreviewResponse
+from src.schemas.review_case import ReviewCaseResolveRequest, ReviewCaseResponse
 from src.api.deps import get_current_user, get_officer_or_above, get_admin_or_senior_officer
 from src.domain.models.user import User
 from src.domain.models.criminal import Criminal, ThreatLevel, LegalStatus
@@ -26,6 +32,7 @@ from src.domain.models.audit import AuditLog
 from src.domain.models.alert import Alert
 from src.domain.models.case import Offense
 from src.domain.models.identity_template import IdentityTemplate
+from src.domain.models.review_case import ReviewCase, ReviewCaseStatus, ReviewCaseType
 
 router = APIRouter()
 
@@ -80,6 +87,97 @@ def serialize_criminal(criminal: Criminal, primary_face_image_url: Optional[str]
         "physical_description": criminal.physical_description,
         "primary_face_image_url": primary_face_image_url,
     }
+
+
+async def serialize_review_case(review_case: ReviewCase, db: AsyncSession) -> dict[str, Any]:
+    criminal_repo = CriminalRepository(db)
+    face_repo = FaceRepository(db)
+
+    source_criminal = await criminal_repo.get(review_case.source_criminal_id)
+    matched_criminal = await criminal_repo.get(review_case.matched_criminal_id)
+
+    source_primary_faces = await face_repo.get_primary_faces_for_criminals([review_case.source_criminal_id])
+    matched_primary_faces = await face_repo.get_primary_faces_for_criminals([review_case.matched_criminal_id])
+
+    return {
+        "id": review_case.id,
+        "case_type": review_case.case_type,
+        "status": review_case.status,
+        "risk_level": review_case.risk_level,
+        "source_criminal": {
+            "id": review_case.source_criminal_id,
+            "name": (
+                f"{source_criminal.first_name} {source_criminal.last_name}"
+                if source_criminal is not None
+                else "Unknown"
+            ),
+            "primary_face_image_url": source_primary_faces[0].image_url if source_primary_faces else None,
+        },
+        "matched_criminal": {
+            "id": review_case.matched_criminal_id,
+            "name": (
+                f"{matched_criminal.first_name} {matched_criminal.last_name}"
+                if matched_criminal is not None
+                else "Unknown"
+            ),
+            "primary_face_image_url": matched_primary_faces[0].image_url if matched_primary_faces else None,
+        },
+        "source_face_id": review_case.source_face_id,
+        "matched_face_id": review_case.matched_face_id,
+        "distance": float(review_case.distance),
+        "embedding_version": review_case.embedding_version,
+        "template_version": review_case.template_version,
+        "submitted_filename": review_case.submitted_filename,
+        "notes": review_case.notes,
+        "resolution_notes": review_case.resolution_notes,
+        "created_by_id": review_case.created_by_id,
+        "resolved_by_id": review_case.resolved_by_id,
+        "created_at": review_case.created_at,
+        "resolved_at": review_case.resolved_at,
+    }
+
+
+@router.get("/review-cases/duplicate-identities", response_model=List[ReviewCaseResponse])
+async def list_duplicate_review_cases(
+    status: ReviewCaseStatus = Query(ReviewCaseStatus.OPEN),
+    current_user: User = Depends(get_admin_or_senior_officer()),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    review_case_repo = ReviewCaseRepository(db)
+    review_cases = await review_case_repo.list_cases(
+        case_type=ReviewCaseType.DUPLICATE_IDENTITY,
+        status=status,
+        limit=100,
+    )
+    return [await serialize_review_case(review_case, db) for review_case in review_cases]
+
+
+@router.post("/review-cases/{review_case_id}/resolve", response_model=ReviewCaseResponse)
+async def resolve_duplicate_review_case(
+    review_case_id: UUID,
+    resolution_in: ReviewCaseResolveRequest,
+    current_user: User = Depends(get_admin_or_senior_officer()),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    review_case_repo = ReviewCaseRepository(db)
+    duplicate_service = DuplicateIdentityService(
+        IdentityTemplateRepository(db),
+        CriminalRepository(db),
+        FaceRepository(db),
+        review_case_repo,
+    )
+
+    try:
+        review_case = await duplicate_service.resolve_review_case(
+            review_case_id=review_case_id,
+            status=resolution_in.status,
+            resolved_by_id=current_user.id,
+            resolution_notes=resolution_in.resolution_notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return await serialize_review_case(review_case, db)
 
 @router.get("/", response_model=CriminalListResponse)
 async def list_criminals(
@@ -256,6 +354,12 @@ async def delete_criminal(
 
     await db.execute(sa_delete(FaceEmbedding).where(FaceEmbedding.criminal_id == criminal_id))
     await db.execute(sa_delete(IdentityTemplate).where(IdentityTemplate.criminal_id == criminal_id))
+    await db.execute(
+        sa_delete(ReviewCase).where(
+            (ReviewCase.source_criminal_id == criminal_id) |
+            (ReviewCase.matched_criminal_id == criminal_id)
+        )
+    )
     await db.execute(sa_delete(AuditLog).where(AuditLog.criminal_id == criminal_id))
     await db.execute(sa_delete(Alert).where(Alert.criminal_id == criminal_id))
     await db.execute(sa_delete(Offense).where(Offense.criminal_id == criminal_id))
@@ -285,13 +389,21 @@ async def enroll_criminal_face(
     criminal_repo = CriminalRepository(db)
     audit_repo = AuditRepository(db)
     template_repo = IdentityTemplateRepository(db)
+    review_case_repo = ReviewCaseRepository(db)
     template_service = IdentityTemplateService(template_repo, face_repo)
+    duplicate_identity_service = DuplicateIdentityService(
+        template_repo,
+        criminal_repo,
+        face_repo,
+        review_case_repo,
+    )
     service = FaceEnrollmentService(
         pipeline,
         face_repo,
         criminal_repo,
         audit_repo,
         template_service=template_service,
+        duplicate_identity_service=duplicate_identity_service,
     )
 
     try:
@@ -301,6 +413,21 @@ async def enroll_criminal_face(
             filename=file.filename,
             is_primary=is_primary,
             user_id=current_user.id,
+        )
+    except DuplicateIdentityConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": str(exc),
+                "review_case_id": str(exc.review_case_id),
+                "risk_level": exc.assessment.risk_level.value,
+                "distance": float(exc.assessment.distance),
+                "conflicting_criminal": {
+                    "id": str(exc.assessment.conflicting_criminal_id),
+                    "name": exc.assessment.conflicting_criminal_name,
+                    "primary_face_image_url": exc.assessment.conflicting_image_url,
+                },
+            },
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

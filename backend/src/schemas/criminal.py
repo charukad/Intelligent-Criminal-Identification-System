@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from src.domain.models.criminal import ThreatLevel, LegalStatus
 from src.schemas.face_quality import FaceQualityResponse
+from src.schemas.review_case import DuplicateReviewSummary
 
 class CriminalBaseSchema(BaseModel):
     nic: Optional[str] = None
@@ -59,3 +60,4 @@ class CriminalFaceResponse(BaseModel):
     template_role: str
     template_distance: float | None = None
     quality: FaceQualityResponse
+    duplicate_review: DuplicateReviewSummary | None = None

@@ -26,7 +26,7 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 | M1 | Enrollment quality gate | Bad face data is blocked before it enters the system | In progress |
 | M2 | Identity template modeling | Each criminal is represented as a stable multi-image identity profile | In progress |
 | M3 | Recognition decision engine | Match decisions are calibrated and tiered | Completed |
-| M4 | Duplicate-person detection | Same person across multiple criminal records is flagged | Not started |
+| M4 | Duplicate-person detection | Same person across multiple criminal records is flagged | In progress |
 | M5 | Frontend review and operator workflow | Operators can review, inspect, and correct recognition behavior | Not started |
 | M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Not started |
 | M7 | Model upgrade path | The system can be retrained, re-embedded, and rolled forward safely | Not started |
@@ -196,6 +196,13 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 - Match and possible-match defaults come from measured template calibration, not guessed constants.
 
 ## M4. Duplicate-Person Detection
+
+### Progress
+- [x] Added a backend duplicate-identity service that screens new face enrollments against other criminal identity templates.
+- [x] Added a persistent review queue for duplicate-identity conflicts.
+- [x] Probable duplicate enrollments are blocked with a `409` response and an attached review-case ID.
+- [x] Lower-confidence duplicate risks are accepted with a stored review case for operator follow-up.
+- [x] Added backend endpoints to list and resolve duplicate review cases.
 
 ### Deliverables
 - Detect likely duplicate identities across different criminal records.

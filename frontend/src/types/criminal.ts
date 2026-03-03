@@ -1,3 +1,5 @@
+import type { DuplicateReviewSummary } from '@/types/review';
+
 export interface Criminal {
     id: string;
     first_name: string;
@@ -22,7 +24,10 @@ export interface CriminalFace {
     embedding_version: string;
     created_at: string;
     box: [number, number, number, number];
+    template_role: string;
+    template_distance?: number | null;
     quality: FaceQuality;
+    duplicate_review?: DuplicateReviewSummary | null;
 }
 
 export interface FaceQuality {

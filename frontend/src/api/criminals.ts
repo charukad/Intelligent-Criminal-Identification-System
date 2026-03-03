@@ -1,5 +1,6 @@
 import { api } from './client';
 import type { Criminal, CriminalFace, FaceQualityPreview } from '@/types/criminal';
+import type { DuplicateReviewSummary } from '@/types/review';
 
 export interface CriminalsListParams {
     page?: number;
@@ -33,6 +34,7 @@ export interface CreateCriminalData {
 export interface FaceUploadFailure {
     fileName: string;
     detail: string;
+    duplicateReview?: DuplicateReviewSummary;
 }
 
 export interface FaceBatchUploadResult {
@@ -110,9 +112,11 @@ export const criminalsApi = {
                 }
                 uploaded.push(response);
             } catch (error: any) {
+                const duplicateReview = parseDuplicateReviewFailure(error);
                 failed.push({
                     fileName: file.name,
-                    detail: error?.response?.data?.detail || 'Face enrollment failed',
+                    detail: duplicateReview?.message || parseErrorDetail(error),
+                    duplicateReview: duplicateReview?.summary,
                 });
             }
         }
@@ -152,3 +156,41 @@ export const criminalsApi = {
         return data;
     },
 };
+
+function parseErrorDetail(error: any): string {
+    const detail = error?.response?.data?.detail;
+    if (typeof detail === 'string') {
+        return detail;
+    }
+    if (detail && typeof detail?.message === 'string') {
+        return detail.message;
+    }
+    return 'Face enrollment failed';
+}
+
+function parseDuplicateReviewFailure(error: any): { message: string; summary: DuplicateReviewSummary } | null {
+    const detail = error?.response?.data?.detail;
+    if (!detail || typeof detail !== 'object' || !detail.review_case_id || !detail.conflicting_criminal) {
+        return null;
+    }
+
+    const summary: DuplicateReviewSummary = {
+        review_case_id: String(detail.review_case_id),
+        risk_level: detail.risk_level,
+        distance: Number(detail.distance ?? 0),
+        conflicting_criminal: {
+            id: String(detail.conflicting_criminal.id),
+            name: detail.conflicting_criminal.name,
+            primary_face_image_url: detail.conflicting_criminal.primary_face_image_url ?? null,
+        },
+        status: 'open',
+    };
+
+    return {
+        message:
+            typeof detail.message === 'string'
+                ? detail.message
+                : `Probable duplicate identity conflict with ${summary.conflicting_criminal.name}.`,
+        summary,
+    };
+}

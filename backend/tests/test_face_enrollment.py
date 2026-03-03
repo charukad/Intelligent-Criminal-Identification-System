@@ -13,7 +13,12 @@ from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 
 from src.domain.models.audit import AuditLog
+from src.domain.models.review_case import DuplicateRiskLevel, ReviewCaseStatus, ReviewCaseType
 from src.services.ai.face_quality import FaceQualityReport
+from src.services.duplicate_identity_service import (
+    DuplicateIdentityAssessment,
+    DuplicateIdentityConflictError,
+)
 from src.services import face_enrollment_service as enrollment_module
 from src.services.face_enrollment_service import FaceEnrollmentService
 
@@ -204,6 +209,147 @@ async def test_enroll_face_rejects_low_quality_images(mock_cvtColor, mock_imdeco
 
 
 @pytest.mark.asyncio
+@patch("cv2.imdecode")
+@patch("cv2.cvtColor")
+async def test_enroll_face_blocks_probable_duplicate_conflict(mock_cvtColor, mock_imdecode):
+    criminal_id = uuid4()
+    conflict_case_id = uuid4()
+
+    mock_imdecode.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+    mock_cvtColor.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    pipeline = MagicMock()
+    pipeline.process_image.return_value = [
+        {"box": (10, 20, 40, 50), "embedding": [0.1] * 512}
+    ]
+
+    face_repo = AsyncMock()
+    criminal_repo = AsyncMock()
+    audit_repo = AsyncMock()
+    template_service = AsyncMock()
+    duplicate_service = AsyncMock()
+    quality_assessor = MagicMock()
+    quality_assessor.assess.return_value = FaceQualityReport(
+        status="accepted",
+        quality_score=90.0,
+        blur_score=100.0,
+        brightness_score=120.0,
+        face_area_ratio=0.2,
+    )
+    criminal_repo.get.return_value = SimpleNamespace(id=criminal_id)
+    duplicate_service.assess_enrollment_conflict.return_value = DuplicateIdentityAssessment(
+        risk_level=DuplicateRiskLevel.PROBABLE_DUPLICATE,
+        distance=0.0031,
+        conflicting_criminal_id=uuid4(),
+        conflicting_criminal_name="Jane Doe",
+        conflicting_face_id=uuid4(),
+        conflicting_image_url="uploads/faces/jane.png",
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+    )
+    duplicate_service.create_or_update_review_case.return_value = SimpleNamespace(
+        id=conflict_case_id,
+        status=ReviewCaseStatus.OPEN,
+    )
+
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        quality_assessor=quality_assessor,
+        template_service=template_service,
+        duplicate_identity_service=duplicate_service,
+    )
+
+    with pytest.raises(DuplicateIdentityConflictError) as exc_info:
+        await service.enroll_face(criminal_id, b"fake-image", filename="face.png")
+
+    assert exc_info.value.review_case_id == conflict_case_id
+    face_repo.create.assert_not_awaited()
+    audit_repo.create.assert_not_awaited()
+    template_service.rebuild_for_criminal.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch("cv2.imdecode")
+@patch("cv2.cvtColor")
+async def test_enroll_face_returns_duplicate_review_for_needs_review(mock_cvtColor, mock_imdecode, monkeypatch, tmp_path):
+    criminal_id = uuid4()
+    user_id = uuid4()
+
+    uploads_dir = tmp_path / "uploads" / "faces"
+    monkeypatch.setattr(enrollment_module, "UPLOADS_DIR", uploads_dir)
+    mock_imdecode.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+    mock_cvtColor.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    pipeline = MagicMock()
+    pipeline.process_image.return_value = [
+        {"box": (10, 20, 40, 50), "embedding": [0.1] * 512}
+    ]
+
+    face_repo = AsyncMock()
+    criminal_repo = AsyncMock()
+    audit_repo = AsyncMock()
+    template_service = AsyncMock()
+    duplicate_service = AsyncMock()
+    quality_assessor = MagicMock()
+    quality_assessor.assess.return_value = FaceQualityReport(
+        status="accepted_with_warnings",
+        quality_score=81.0,
+        blur_score=95.0,
+        brightness_score=150.0,
+        face_area_ratio=0.2,
+        warnings=["face_small_in_frame"],
+    )
+    criminal_repo.get.return_value = SimpleNamespace(id=criminal_id)
+    face_repo.create.side_effect = lambda face: face
+    assessment = DuplicateIdentityAssessment(
+        risk_level=DuplicateRiskLevel.NEEDS_REVIEW,
+        distance=0.0047,
+        conflicting_criminal_id=uuid4(),
+        conflicting_criminal_name="Review Person",
+        conflicting_face_id=uuid4(),
+        conflicting_image_url="uploads/faces/review.png",
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+    )
+    duplicate_service.assess_enrollment_conflict.return_value = assessment
+    review_case = SimpleNamespace(id=uuid4(), status=ReviewCaseStatus.OPEN)
+    duplicate_service.create_or_update_review_case.side_effect = [review_case, review_case]
+
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        quality_assessor=quality_assessor,
+        template_service=template_service,
+        duplicate_identity_service=duplicate_service,
+    )
+
+    result = await service.enroll_face(
+        criminal_id=criminal_id,
+        image_bytes=b"fake-image",
+        filename="review.png",
+        user_id=user_id,
+    )
+
+    assert result["duplicate_review"] == {
+        "review_case_id": review_case.id,
+        "risk_level": DuplicateRiskLevel.NEEDS_REVIEW,
+        "distance": 0.0047,
+        "conflicting_criminal": {
+            "id": assessment.conflicting_criminal_id,
+            "name": "Review Person",
+            "primary_face_image_url": "uploads/faces/review.png",
+        },
+        "status": ReviewCaseStatus.OPEN,
+    }
+    assert duplicate_service.create_or_update_review_case.await_count == 2
+
+
+@pytest.mark.asyncio
 async def test_enroll_criminal_face_endpoint_returns_service_result(monkeypatch):
     criminals_module = load_criminals_endpoint_module(monkeypatch)
     criminal_id = uuid4()
@@ -295,6 +441,167 @@ async def test_enroll_criminal_face_endpoint_maps_validation_error(monkeypatch):
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "No face detected in the uploaded image"
+
+
+@pytest.mark.asyncio
+async def test_enroll_criminal_face_endpoint_maps_duplicate_conflict(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    review_case_id = uuid4()
+    assessment = DuplicateIdentityAssessment(
+        risk_level=DuplicateRiskLevel.PROBABLE_DUPLICATE,
+        distance=0.0032,
+        conflicting_criminal_id=uuid4(),
+        conflicting_criminal_name="Existing Person",
+        conflicting_face_id=uuid4(),
+        conflicting_image_url="uploads/faces/existing.png",
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+    )
+
+    class FakeService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def enroll_face(self, **_kwargs):
+            raise DuplicateIdentityConflictError(assessment, review_case_id)
+
+    monkeypatch.setattr(criminals_module, "FaceEnrollmentService", FakeService)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "AuditRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "ReviewCaseRepository", lambda _db: object())
+
+    upload = UploadFile(
+        filename="face.jpg",
+        file=io.BytesIO(b"fake-image"),
+        headers=Headers({"content-type": "image/jpeg"}),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await criminals_module.enroll_criminal_face(
+            criminal_id=uuid4(),
+            file=upload,
+            is_primary=False,
+            current_user=SimpleNamespace(id=uuid4()),
+            db=AsyncMock(),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["review_case_id"] == str(review_case_id)
+    assert exc_info.value.detail["risk_level"] == "probable_duplicate"
+
+
+@pytest.mark.asyncio
+async def test_list_duplicate_review_cases_endpoint_returns_cases(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    review_case = SimpleNamespace(
+        id=uuid4(),
+        case_type=ReviewCaseType.DUPLICATE_IDENTITY,
+        status=ReviewCaseStatus.OPEN,
+        risk_level=DuplicateRiskLevel.NEEDS_REVIEW,
+        source_criminal_id=uuid4(),
+        matched_criminal_id=uuid4(),
+        source_face_id=None,
+        matched_face_id=None,
+        distance=0.0048,
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+        submitted_filename="review.png",
+        notes="Auto-generated",
+        resolution_notes=None,
+        created_by_id=None,
+        resolved_by_id=None,
+        created_at=datetime.now(timezone.utc),
+        resolved_at=None,
+    )
+
+    review_case_repo = MagicMock()
+    review_case_repo.list_cases = AsyncMock(return_value=[review_case])
+    criminal_repo = MagicMock()
+    criminal_repo.get = AsyncMock(side_effect=[
+        SimpleNamespace(first_name="Source", last_name="Person"),
+        SimpleNamespace(first_name="Matched", last_name="Person"),
+    ])
+    face_repo = MagicMock()
+    face_repo.get_primary_faces_for_criminals = AsyncMock(side_effect=[
+        [SimpleNamespace(image_url="uploads/faces/source.png")],
+        [SimpleNamespace(image_url="uploads/faces/matched.png")],
+    ])
+
+    monkeypatch.setattr(criminals_module, "ReviewCaseRepository", lambda _db: review_case_repo)
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: criminal_repo)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: face_repo)
+
+    result = await criminals_module.list_duplicate_review_cases(
+        status=ReviewCaseStatus.OPEN,
+        current_user=SimpleNamespace(id=uuid4()),
+        db=AsyncMock(),
+    )
+
+    assert len(result) == 1
+    assert result[0]["source_criminal"]["name"] == "Source Person"
+    assert result[0]["matched_criminal"]["primary_face_image_url"] == "uploads/faces/matched.png"
+
+
+@pytest.mark.asyncio
+async def test_resolve_duplicate_review_case_endpoint_returns_resolved_case(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    review_case = SimpleNamespace(
+        id=uuid4(),
+        case_type=ReviewCaseType.DUPLICATE_IDENTITY,
+        status=ReviewCaseStatus.CONFIRMED_DUPLICATE,
+        risk_level=DuplicateRiskLevel.PROBABLE_DUPLICATE,
+        source_criminal_id=uuid4(),
+        matched_criminal_id=uuid4(),
+        source_face_id=None,
+        matched_face_id=None,
+        distance=0.0031,
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+        submitted_filename="dup.png",
+        notes="Auto-generated",
+        resolution_notes="Confirmed by operator",
+        created_by_id=None,
+        resolved_by_id=uuid4(),
+        created_at=datetime.now(timezone.utc),
+        resolved_at=datetime.now(timezone.utc),
+    )
+
+    class FakeDuplicateService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def resolve_review_case(self, **kwargs):
+            assert kwargs["status"] == ReviewCaseStatus.CONFIRMED_DUPLICATE
+            return review_case
+
+    criminal_repo = MagicMock()
+    criminal_repo.get = AsyncMock(side_effect=[
+        SimpleNamespace(first_name="Source", last_name="Person"),
+        SimpleNamespace(first_name="Matched", last_name="Person"),
+    ])
+    face_repo = MagicMock()
+    face_repo.get_primary_faces_for_criminals = AsyncMock(side_effect=[[], []])
+
+    monkeypatch.setattr(criminals_module, "DuplicateIdentityService", FakeDuplicateService)
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: criminal_repo)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: face_repo)
+    monkeypatch.setattr(criminals_module, "ReviewCaseRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateRepository", lambda _db: object())
+
+    result = await criminals_module.resolve_duplicate_review_case(
+        review_case_id=review_case.id,
+        resolution_in=SimpleNamespace(
+            status=ReviewCaseStatus.CONFIRMED_DUPLICATE,
+            resolution_notes="Confirmed by operator",
+        ),
+        current_user=SimpleNamespace(id=uuid4()),
+        db=AsyncMock(),
+    )
+
+    assert result["status"] == ReviewCaseStatus.CONFIRMED_DUPLICATE
+    assert result["matched_criminal"]["name"] == "Matched Person"
 
 
 @pytest.mark.asyncio
@@ -503,7 +810,7 @@ async def test_delete_criminal_cleans_related_records_and_commits(monkeypatch):
     )
 
     delete_image.assert_called_once_with("uploads/faces/sample.jpg")
-    assert db.execute.await_count == 5
+    assert db.execute.await_count == 6
     db.delete.assert_awaited_once_with(criminal)
     db.commit.assert_awaited_once()
     assert result == {"status": "success", "message": "Criminal record deleted"}

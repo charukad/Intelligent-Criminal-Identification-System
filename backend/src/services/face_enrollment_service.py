@@ -13,6 +13,10 @@ from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.face import FaceRepository
 from src.services.ai.face_quality import FaceQualityAssessor, FaceQualityReport
 from src.services.ai.pipeline import FaceProcessingPipeline
+from src.services.duplicate_identity_service import (
+    DuplicateIdentityConflictError,
+    DuplicateIdentityService,
+)
 from src.services.face_quality_service import get_quality_reason_message, serialize_quality_report
 from src.services.identity_template_service import IdentityTemplateService
 
@@ -39,6 +43,7 @@ class FaceEnrollmentService:
         audit_repo: AuditRepository,
         quality_assessor: FaceQualityAssessor | None = None,
         template_service: IdentityTemplateService | None = None,
+        duplicate_identity_service: DuplicateIdentityService | None = None,
     ) -> None:
         self.pipeline = pipeline
         self.face_repo = face_repo
@@ -46,6 +51,7 @@ class FaceEnrollmentService:
         self.audit_repo = audit_repo
         self.quality_assessor = quality_assessor or FaceQualityAssessor()
         self.template_service = template_service
+        self.duplicate_identity_service = duplicate_identity_service
 
     async def enroll_face(
         self,
@@ -77,6 +83,24 @@ class FaceEnrollmentService:
         if quality_report.should_reject:
             raise ValueError(self._format_quality_rejection(quality_report))
 
+        duplicate_review = None
+        if self.duplicate_identity_service is not None:
+            duplicate_assessment = await self.duplicate_identity_service.assess_enrollment_conflict(
+                criminal_id,
+                face_data["embedding"],
+            )
+            if duplicate_assessment is not None:
+                review_case = await self.duplicate_identity_service.create_or_update_review_case(
+                    source_criminal_id=criminal_id,
+                    assessment=duplicate_assessment,
+                    created_by_id=user_id,
+                    submitted_filename=filename,
+                    notes="Auto-generated during face enrollment duplicate screening.",
+                )
+                if duplicate_assessment.risk_level.value == "probable_duplicate":
+                    raise DuplicateIdentityConflictError(duplicate_assessment, review_case.id)
+                duplicate_review = self._serialize_duplicate_review(review_case, duplicate_assessment)
+
         face_id = uuid4()
         image_url = self._store_image(criminal_id, face_id, image_bytes, filename)
 
@@ -104,6 +128,16 @@ class FaceEnrollmentService:
             embedding=face_data["embedding"],
         )
         created_face = await self.face_repo.create(face_embedding)
+        if duplicate_review is not None and self.duplicate_identity_service is not None:
+            review_case = await self.duplicate_identity_service.create_or_update_review_case(
+                source_criminal_id=criminal_id,
+                assessment=duplicate_assessment,
+                created_by_id=user_id,
+                source_face_id=created_face.id,
+                submitted_filename=filename,
+                notes="Enrollment accepted with duplicate review warning.",
+            )
+            duplicate_review = self._serialize_duplicate_review(review_case, duplicate_assessment)
         if self.template_service is not None:
             await self.template_service.rebuild_for_criminal(criminal_id)
             refreshed_face = await self.face_repo.get(created_face.id)
@@ -131,6 +165,7 @@ class FaceEnrollmentService:
             "template_role": getattr(created_face, "template_role", "archived"),
             "template_distance": float(created_face.template_distance) if getattr(created_face, "template_distance", None) is not None else None,
             "quality": serialize_quality_report(quality_report),
+            "duplicate_review": duplicate_review,
         }
 
     async def delete_face(
@@ -254,3 +289,16 @@ class FaceEnrollmentService:
         if not warnings:
             return None
         return "|".join(warnings)
+
+    def _serialize_duplicate_review(self, review_case: Any, assessment: Any) -> dict[str, Any]:
+        return {
+            "review_case_id": review_case.id,
+            "risk_level": assessment.risk_level,
+            "distance": float(assessment.distance),
+            "conflicting_criminal": {
+                "id": assessment.conflicting_criminal_id,
+                "name": assessment.conflicting_criminal_name,
+                "primary_face_image_url": assessment.conflicting_image_url,
+            },
+            "status": getattr(review_case, "status", "open"),
+        }
