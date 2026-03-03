@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, Float, Text
 from pgvector.sqlalchemy import Vector
 
 class FaceEmbeddingBase(SQLModel):
@@ -13,6 +13,16 @@ class FaceEmbeddingBase(SQLModel):
     box_y: Optional[int] = None
     box_w: Optional[int] = None
     box_h: Optional[int] = None
+    quality_status: str = Field(default="accepted")
+    quality_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    blur_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    brightness_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    face_area_ratio: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    pose_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    occlusion_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    template_role: str = Field(default="archived")
+    template_distance: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    quality_warnings: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
 class FaceEmbedding(FaceEmbeddingBase, table=True):
     __tablename__ = "face_embeddings"

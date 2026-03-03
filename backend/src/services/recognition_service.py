@@ -1,29 +1,31 @@
 from typing import List, Dict, Any
 import cv2
 import numpy as np
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.ai.pipeline import FaceProcessingPipeline
 from src.infrastructure.repositories.face import FaceRepository
+from src.infrastructure.repositories.identity_template import IdentityTemplateRepository
 from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.audit import AuditRepository
 from src.domain.models.audit import AuditLog
 from src.core.logging import logger
 
 
-DEFAULT_MATCH_THRESHOLD = 0.45
-DEFAULT_AMBIGUITY_MARGIN = 0.08
+DEFAULT_MATCH_THRESHOLD = 0.01
+DEFAULT_AMBIGUITY_MARGIN = 0.0
 
 
 class RecognitionService:
     def __init__(
         self,
         pipeline: FaceProcessingPipeline,
+        template_repo: IdentityTemplateRepository,
         face_repo: FaceRepository,
         criminal_repo: CriminalRepository,
         audit_repo: AuditRepository
     ):
         self.pipeline = pipeline
+        self.template_repo = template_repo
         self.face_repo = face_repo
         self.criminal_repo = criminal_repo
         self.audit_repo = audit_repo
@@ -34,7 +36,8 @@ class RecognitionService:
         threshold: float = DEFAULT_MATCH_THRESHOLD,
         ambiguity_margin: float = DEFAULT_AMBIGUITY_MARGIN,
         single_face_only: bool = True,
-    ) -> List[Dict[str, Any]]:
+        include_debug: bool = False,
+    ) -> Dict[str, Any]:
         """
         End-to-end identification flow.
         1. Process image via AI Pipeline.
@@ -51,76 +54,155 @@ class RecognitionService:
         img_rgb = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
         
         processed_faces = self.pipeline.process_image(img_rgb)
+        detected_face_count = len(processed_faces)
         if single_face_only and processed_faces:
             processed_faces = [self._select_largest_face(processed_faces)]
         
         final_results = []
+        debug_faces = []
         
         for face_data in processed_faces:
             embedding = face_data['embedding']
-            box = face_data['box']
+            box = tuple(int(value) for value in face_data['box'])
+            area = int(box[2] * box[3])
             
-            # Vector Search
-            matches = await self.face_repo.find_nearest_neighbors(embedding, limit=5)
-            
-            if not matches:
-                final_results.append({
-                    "box": box,
-                    "status": "unknown",
-                    "confidence": 0.0
-                })
-                continue
-                
-            best_match_face, distance = matches[0]
-            second_best_other_distance = self._get_second_best_other_criminal_distance(
-                matches,
-                best_match_face.criminal_id,
-            )
-            
-            # Convert L2 distance to Confidence Score using calibrated Sigmoid function
-            # FaceNet Euclidean distances: < 0.6 is a strong match, > 0.9 is weak.
-            # This sigmoid centers around 0.65 mapping distance to a 0-100% curve.
-            confidence_float = 100.0 / (1.0 + np.exp(10.0 * (distance - 0.65)))
-            confidence = float(confidence_float)
-            
-            if distance > threshold:
-                final_results.append({
+            ranked_candidates = await self._rank_criminal_candidates(embedding, limit=10)
+
+            if not ranked_candidates:
+                decision_reason = "no_candidate_embeddings"
+                result = {
                     "box": box,
                     "status": "unknown",
                     "confidence": 0.0,
-                })
+                    "distance": None,
+                    "decision_reason": decision_reason,
+                }
+                final_results.append(result)
+                if include_debug:
+                    debug_faces.append({
+                        "box": box,
+                        "area": area,
+                        "selected": True,
+                        "decision_reason": decision_reason,
+                        "best_distance": None,
+                        "second_best_distance": None,
+                        "top_candidates": [],
+                    })
+                continue
+                
+            best_candidate = ranked_candidates[0]
+            distance = float(best_candidate["distance"])
+            second_best_other_distance = (
+                float(ranked_candidates[1]["distance"]) if len(ranked_candidates) > 1 else None
+            )
+            confidence = self._score_distance(distance, threshold)
+            
+            if distance > threshold:
+                decision_reason = "over_threshold"
+                debug_top_candidates = []
+                if include_debug:
+                    debug_top_candidates = await self._enrich_candidates(ranked_candidates[:3])
+                result = {
+                    "box": box,
+                    "status": "unknown",
+                    "confidence": 0.0,
+                    "distance": distance,
+                    "decision_reason": decision_reason,
+                }
+                final_results.append(result)
+                if include_debug:
+                    debug_faces.append({
+                        "box": box,
+                        "area": area,
+                        "selected": True,
+                        "decision_reason": decision_reason,
+                        "best_distance": distance,
+                        "second_best_distance": second_best_other_distance,
+                        "top_candidates": debug_top_candidates,
+                    })
                 continue
 
             if (
-                second_best_other_distance is not None
+                ambiguity_margin > 0
+                and second_best_other_distance is not None
                 and (second_best_other_distance - distance) < ambiguity_margin
             ):
+                decision_reason = "ambiguous"
+                debug_top_candidates = []
+                if include_debug:
+                    debug_top_candidates = await self._enrich_candidates(ranked_candidates[:3])
                 logger.info(
                     "Rejected ambiguous recognition candidate. best_distance=%.4f second_best_distance=%.4f",
                     distance,
                     second_best_other_distance,
                 )
-                final_results.append({
+                result = {
                     "box": box,
                     "status": "unknown",
                     "confidence": 0.0,
-                })
+                    "distance": distance,
+                    "decision_reason": decision_reason,
+                }
+                final_results.append(result)
+                if include_debug:
+                    debug_faces.append({
+                        "box": box,
+                        "area": area,
+                        "selected": True,
+                        "decision_reason": decision_reason,
+                        "best_distance": distance,
+                        "second_best_distance": second_best_other_distance,
+                        "top_candidates": debug_top_candidates,
+                    })
                 continue
-                
-            # Fetch Profile
-            criminal = await self.criminal_repo.get(best_match_face.criminal_id)
             
-            final_results.append({
+            decision_reason = "matched"
+            best_candidate_data = await self._enrich_candidate(best_candidate)
+            if best_candidate_data is None:
+                logger.warning(
+                    "Recognition candidate referenced missing criminal record: %s",
+                    best_candidate["criminal_id"],
+                )
+                result = {
+                    "box": box,
+                    "status": "unknown",
+                    "confidence": 0.0,
+                    "distance": distance,
+                    "decision_reason": "missing_criminal_record",
+                }
+                final_results.append(result)
+                if include_debug:
+                    debug_faces.append({
+                        "box": box,
+                        "area": area,
+                        "selected": True,
+                        "decision_reason": "missing_criminal_record",
+                        "best_distance": distance,
+                        "second_best_distance": second_best_other_distance,
+                        "top_candidates": [],
+                    })
+                continue
+
+            result = {
                 "box": box,
                 "status": "match",
                 "confidence": confidence,
-                "criminal": {
-                    "id": str(criminal.id),
-                    "name": f"{criminal.first_name} {criminal.last_name}",
-                    "nic": criminal.nic,
-                    "threat_level": criminal.threat_level
-                }
-            })
+                "distance": distance,
+                "decision_reason": decision_reason,
+                "criminal": best_candidate_data["criminal"],
+            }
+            final_results.append(result)
+            if include_debug:
+                debug_top_candidates = await self._enrich_candidates(ranked_candidates[:3])
+                debug_faces.append({
+                    "box": box,
+                    "area": area,
+                    "selected": True,
+                    "decision_reason": decision_reason,
+                    "best_distance": distance,
+                    "second_best_distance": second_best_other_distance,
+                    "top_candidates": debug_top_candidates,
+                })
             
         # Log the action
         audit_entry = AuditLog(
@@ -129,7 +211,21 @@ class RecognitionService:
         )
         await self.audit_repo.create(audit_entry)
         
-        return final_results
+        debug_payload = None
+        if include_debug:
+            debug_payload = {
+                "threshold": threshold,
+                "ambiguity_margin": ambiguity_margin,
+                "single_face_only": single_face_only,
+                "detected_face_count": detected_face_count,
+                "analyzed_face_count": len(processed_faces),
+                "faces": debug_faces,
+            }
+        
+        return {
+            "results": final_results,
+            "debug": debug_payload,
+        }
 
     def _select_largest_face(self, processed_faces: List[Dict[str, Any]]) -> Dict[str, Any]:
         return max(processed_faces, key=lambda face: face["box"][2] * face["box"][3])
@@ -143,3 +239,66 @@ class RecognitionService:
             if face_match.criminal_id != best_criminal_id:
                 return float(distance)
         return None
+
+    async def _rank_criminal_candidates(
+        self,
+        embedding: List[float],
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        matches = await self.template_repo.find_nearest_neighbors(embedding, limit=limit)
+        return [
+            {
+                "criminal_id": str(template.criminal_id),
+                "template": template,
+                "distance": float(distance),
+            }
+            for template, distance in matches
+        ]
+
+    async def _enrich_candidates(
+        self,
+        ranked_candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        enriched_candidates: List[Dict[str, Any]] = []
+        for candidate in ranked_candidates:
+            enriched_candidate = await self._enrich_candidate(candidate)
+            if enriched_candidate is not None:
+                enriched_candidates.append(enriched_candidate)
+        return enriched_candidates
+
+    async def _enrich_candidate(
+        self,
+        ranked_candidate: Dict[str, Any],
+    ) -> Dict[str, Any] | None:
+        template = ranked_candidate["template"]
+        criminal = await self.criminal_repo.get(template.criminal_id)
+        if not criminal:
+            return None
+
+        primary_face = None
+        if getattr(template, "primary_face_id", None):
+            primary_face = await self.face_repo.get(template.primary_face_id)
+
+        return {
+            "criminal": {
+                "id": ranked_candidate["criminal_id"],
+                "name": f"{criminal.first_name} {criminal.last_name}",
+                "nic": criminal.nic,
+                "threat_level": criminal.threat_level,
+            },
+            "face_id": str(primary_face.id) if primary_face else "",
+            "image_url": primary_face.image_url if primary_face else "",
+            "is_primary": bool(primary_face.is_primary) if primary_face else False,
+            "embedding_version": template.embedding_version,
+            "template_version": template.template_version,
+            "active_face_count": template.active_face_count,
+            "support_face_count": template.support_face_count,
+            "outlier_face_count": template.outlier_face_count,
+            "distance": ranked_candidate["distance"],
+        }
+
+    def _score_distance(self, distance: float, threshold: float) -> float:
+        if threshold <= 0:
+            return 0.0
+        normalized = 1.0 - (distance / threshold)
+        return float(max(0.0, min(100.0, normalized * 100.0)))

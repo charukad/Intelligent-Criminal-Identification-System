@@ -13,6 +13,7 @@ from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 
 from src.domain.models.audit import AuditLog
+from src.services.ai.face_quality import FaceQualityReport
 from src.services import face_enrollment_service as enrollment_module
 from src.services.face_enrollment_service import FaceEnrollmentService
 
@@ -62,10 +63,27 @@ async def test_enroll_face_success(mock_cvtColor, mock_imdecode, monkeypatch, tm
     face_repo = AsyncMock()
     criminal_repo = AsyncMock()
     audit_repo = AsyncMock()
+    template_service = AsyncMock()
+    quality_assessor = MagicMock()
+    quality_assessor.assess.return_value = FaceQualityReport(
+        status="accepted_with_warnings",
+        quality_score=82.5,
+        blur_score=95.0,
+        brightness_score=162.0,
+        face_area_ratio=0.2,
+        warnings=["poor_lighting"],
+    )
     criminal_repo.get.return_value = SimpleNamespace(id=criminal_id)
     face_repo.create.side_effect = lambda face: face
 
-    service = FaceEnrollmentService(pipeline, face_repo, criminal_repo, audit_repo)
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        quality_assessor=quality_assessor,
+        template_service=template_service,
+    )
 
     result = await service.enroll_face(
         criminal_id=criminal_id,
@@ -88,9 +106,30 @@ async def test_enroll_face_success(mock_cvtColor, mock_imdecode, monkeypatch, tm
     assert created_face.box_y == 20
     assert created_face.box_w == 40
     assert created_face.box_h == 50
+    assert created_face.quality_status == "accepted_with_warnings"
+    assert created_face.quality_score == 82.5
+    assert created_face.blur_score == 95.0
+    assert created_face.brightness_score == 162.0
+    assert created_face.face_area_ratio == 0.2
+    assert created_face.pose_score == 100.0
+    assert created_face.occlusion_score == 100.0
+    assert created_face.quality_warnings == "poor_lighting"
+    template_service.rebuild_for_criminal.assert_awaited_once_with(criminal_id)
     assert result["created_at"] == created_face.created_at
     assert result["criminal_id"] == criminal_id
     assert result["box"] == (10, 20, 40, 50)
+    assert result["template_role"] == "archived"
+    assert result["template_distance"] is None
+    assert result["quality"] == {
+        "status": "accepted_with_warnings",
+        "quality_score": 82.5,
+        "blur_score": 95.0,
+        "brightness_score": 162.0,
+        "face_area_ratio": 0.2,
+        "pose_score": 100.0,
+        "occlusion_score": 100.0,
+        "warnings": ["poor_lighting"],
+    }
 
     audit_repo.create.assert_awaited_once()
     audit_entry = audit_repo.create.await_args.args[0]
@@ -121,6 +160,50 @@ async def test_enroll_face_requires_single_detected_face(mock_cvtColor, mock_imd
 
 
 @pytest.mark.asyncio
+@patch("cv2.imdecode")
+@patch("cv2.cvtColor")
+async def test_enroll_face_rejects_low_quality_images(mock_cvtColor, mock_imdecode):
+    mock_imdecode.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+    mock_cvtColor.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    pipeline = MagicMock()
+    pipeline.process_image.return_value = [
+        {"box": (10, 20, 40, 50), "embedding": [0.1] * 512}
+    ]
+
+    face_repo = AsyncMock()
+    criminal_repo = AsyncMock()
+    audit_repo = AsyncMock()
+    template_service = AsyncMock()
+    quality_assessor = MagicMock()
+    quality_assessor.assess.return_value = FaceQualityReport(
+        status="rejected",
+        quality_score=12.0,
+        blur_score=10.0,
+        brightness_score=120.0,
+        face_area_ratio=0.2,
+        rejection_reasons=["face_too_blurry"],
+    )
+    criminal_repo.get.return_value = SimpleNamespace(id=uuid4())
+
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        quality_assessor=quality_assessor,
+        template_service=template_service,
+    )
+
+    with pytest.raises(ValueError, match="too blurry"):
+        await service.enroll_face(uuid4(), b"fake-image")
+
+    face_repo.create.assert_not_awaited()
+    audit_repo.create.assert_not_awaited()
+    template_service.rebuild_for_criminal.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_enroll_criminal_face_endpoint_returns_service_result(monkeypatch):
     criminals_module = load_criminals_endpoint_module(monkeypatch)
     criminal_id = uuid4()
@@ -133,6 +216,18 @@ async def test_enroll_criminal_face_endpoint_returns_service_result(monkeypatch)
         "embedding_version": "tracenet_v1",
         "created_at": datetime.now(timezone.utc),
         "box": (1, 2, 3, 4),
+        "template_role": "primary",
+        "template_distance": 0.0012,
+        "quality": {
+            "status": "accepted",
+            "quality_score": 90.0,
+            "blur_score": 120.0,
+            "brightness_score": 130.0,
+            "face_area_ratio": 0.2,
+            "pose_score": 100.0,
+            "occlusion_score": 100.0,
+            "warnings": [],
+        },
     }
 
     class FakeService:
@@ -203,6 +298,80 @@ async def test_enroll_criminal_face_endpoint_maps_validation_error(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_preview_face_quality_endpoint_returns_service_result(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    expected = {
+        "status": "accepted_with_warnings",
+        "detected_face_count": 1,
+        "decision_reason": "accepted_with_warnings",
+        "message": "Image can be enrolled, but quality warnings should be reviewed.",
+        "box": (1, 2, 3, 4),
+        "quality": {
+            "status": "accepted_with_warnings",
+            "quality_score": 81.0,
+            "blur_score": 96.0,
+            "brightness_score": 172.0,
+            "face_area_ratio": 0.2,
+            "pose_score": 100.0,
+            "occlusion_score": 100.0,
+            "warnings": ["poor_lighting"],
+        },
+    }
+
+    class FakeService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def preview_image(self, image_bytes):
+            assert image_bytes == b"fake-image"
+            return expected
+
+    monkeypatch.setattr(criminals_module, "FaceQualityService", FakeService)
+
+    upload = UploadFile(
+        filename="face.jpg",
+        file=io.BytesIO(b"fake-image"),
+        headers=Headers({"content-type": "image/jpeg"}),
+    )
+
+    result = await criminals_module.preview_face_quality(
+        file=upload,
+        current_user=SimpleNamespace(id=uuid4()),
+    )
+
+    assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_preview_face_quality_endpoint_maps_validation_error(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+
+    class FakeService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def preview_image(self, _image_bytes):
+            raise ValueError("Invalid image data")
+
+    monkeypatch.setattr(criminals_module, "FaceQualityService", FakeService)
+
+    upload = UploadFile(
+        filename="face.jpg",
+        file=io.BytesIO(b"fake-image"),
+        headers=Headers({"content-type": "image/jpeg"}),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await criminals_module.preview_face_quality(
+            file=upload,
+            current_user=SimpleNamespace(id=uuid4()),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Invalid image data"
+
+
+@pytest.mark.asyncio
 async def test_list_criminal_faces_returns_enrolled_faces(monkeypatch):
     criminals_module = load_criminals_endpoint_module(monkeypatch)
     criminal_id = uuid4()
@@ -217,6 +386,16 @@ async def test_list_criminal_faces_returns_enrolled_faces(monkeypatch):
         box_y=22,
         box_w=33,
         box_h=44,
+        template_role="support",
+        template_distance=0.0026,
+        quality_status="accepted_with_warnings",
+        quality_score=83.5,
+        blur_score=91.0,
+        brightness_score=175.0,
+        face_area_ratio=0.143,
+        pose_score=78.0,
+        occlusion_score=84.0,
+        quality_warnings="poor_lighting|face_small_in_frame",
     )
 
     criminal_repo = AsyncMock()
@@ -242,6 +421,18 @@ async def test_list_criminal_faces_returns_enrolled_faces(monkeypatch):
             "embedding_version": "tracenet_v1",
             "created_at": datetime(2026, 2, 28, 12, 0, tzinfo=timezone.utc),
             "box": (11, 22, 33, 44),
+            "template_role": "support",
+            "template_distance": 0.0026,
+            "quality": {
+                "status": "accepted_with_warnings",
+                "quality_score": 83.5,
+                "blur_score": 91.0,
+                "brightness_score": 175.0,
+                "face_area_ratio": 0.143,
+                "pose_score": 78.0,
+                "occlusion_score": 84.0,
+                "warnings": ["poor_lighting", "face_small_in_frame"],
+            },
         }
     ]
 
@@ -312,7 +503,7 @@ async def test_delete_criminal_cleans_related_records_and_commits(monkeypatch):
     )
 
     delete_image.assert_called_once_with("uploads/faces/sample.jpg")
-    assert db.execute.await_count == 4
+    assert db.execute.await_count == 5
     db.delete.assert_awaited_once_with(criminal)
     db.commit.assert_awaited_once()
     assert result == {"status": "success", "message": "Criminal record deleted"}
@@ -335,6 +526,7 @@ async def test_delete_face_promotes_remaining_face(monkeypatch, tmp_path):
     face_repo = AsyncMock()
     criminal_repo = AsyncMock()
     audit_repo = AsyncMock()
+    template_service = AsyncMock()
     criminal_repo.get.return_value = SimpleNamespace(id=criminal_id)
     face_repo.get.return_value = SimpleNamespace(
         id=deleted_face_id,
@@ -346,7 +538,13 @@ async def test_delete_face_promotes_remaining_face(monkeypatch, tmp_path):
         SimpleNamespace(id=promoted_face_id, criminal_id=criminal_id, is_primary=False)
     ]
 
-    service = FaceEnrollmentService(MagicMock(), face_repo, criminal_repo, audit_repo)
+    service = FaceEnrollmentService(
+        MagicMock(),
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
 
     result = await service.delete_face(
         criminal_id=criminal_id,
@@ -357,6 +555,7 @@ async def test_delete_face_promotes_remaining_face(monkeypatch, tmp_path):
     assert not stored_file.exists()
     face_repo.delete.assert_awaited_once_with(deleted_face_id)
     face_repo.set_primary.assert_awaited_once_with(promoted_face_id)
+    template_service.rebuild_for_criminal.assert_awaited_once_with(criminal_id)
     assert result["status"] == "success"
     assert result["promoted_face_id"] == str(promoted_face_id)
     audit_entry = audit_repo.create.await_args.args[0]
@@ -409,6 +608,7 @@ async def test_set_primary_face_updates_primary_and_audits():
     face_repo = AsyncMock()
     criminal_repo = AsyncMock()
     audit_repo = AsyncMock()
+    template_service = AsyncMock()
     criminal_repo.get.return_value = SimpleNamespace(id=criminal_id)
     face_repo.get.return_value = SimpleNamespace(
         id=face_id,
@@ -416,7 +616,13 @@ async def test_set_primary_face_updates_primary_and_audits():
         is_primary=False,
     )
 
-    service = FaceEnrollmentService(MagicMock(), face_repo, criminal_repo, audit_repo)
+    service = FaceEnrollmentService(
+        MagicMock(),
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
 
     result = await service.set_primary_face(
         criminal_id=criminal_id,
@@ -426,6 +632,7 @@ async def test_set_primary_face_updates_primary_and_audits():
 
     face_repo.unset_primary_for_criminal.assert_awaited_once_with(criminal_id)
     face_repo.set_primary.assert_awaited_once_with(face_id)
+    template_service.rebuild_for_criminal.assert_awaited_once_with(criminal_id)
     audit_entry = audit_repo.create.await_args.args[0]
     assert audit_entry.action == "FACE_SET_PRIMARY"
     assert result["status"] == "success"

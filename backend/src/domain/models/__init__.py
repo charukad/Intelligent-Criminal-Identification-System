@@ -7,6 +7,7 @@ from src.domain.models.case import Case, CaseStatus, Offense
 
 # Import face model when pgvector is available
 from src.domain.models.face import FaceEmbedding
+from src.domain.models.identity_template import IdentityTemplate
 
 __all__ = [
     "Station",
@@ -15,6 +16,7 @@ __all__ = [
     "UserRole",
     "UserBase",
     "Criminal",
+    "IdentityTemplate",
     "Case",
     "CaseStatus",
     "Offense",

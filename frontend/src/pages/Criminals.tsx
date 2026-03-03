@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoleGuard } from '@/components/common/RoleGuard';
@@ -8,6 +8,7 @@ import { criminalsApi } from '@/api/criminals';
 import { buildBackendUrl } from '@/api/client';
 import type { CriminalsListParams } from '@/api/criminals';
 import type { Criminal, CriminalFace, CriminalFormData } from '@/types/criminal';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CriminalFilters } from '@/components/criminals/CriminalFilters';
@@ -21,6 +22,58 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+
+function humanizeQualityLabel(value: string) {
+    return value.replace(/_/g, ' ');
+}
+
+function getFaceQualityBadge(face: CriminalFace) {
+    if (face.quality.status === 'accepted') {
+        return { label: 'Ready For Matching', variant: 'success' as const };
+    }
+    if (face.quality.status === 'accepted_with_warnings') {
+        return { label: 'Use With Warnings', variant: 'warning' as const };
+    }
+    return { label: 'Rejected Quality', variant: 'destructive' as const };
+}
+
+function getStoredFaceWarnings(face: CriminalFace) {
+    const warnings = [...face.quality.warnings];
+
+    if (face.quality.pose_score > 0 && face.quality.pose_score < 65 && !warnings.includes('face_pose_off_center')) {
+        warnings.unshift('face_pose_off_center');
+    }
+
+    if (
+        face.quality.occlusion_score > 0 &&
+        face.quality.occlusion_score < 65 &&
+        !warnings.includes('possible_face_occlusion')
+    ) {
+        warnings.push('possible_face_occlusion');
+    }
+
+    return Array.from(new Set(warnings));
+}
+
+function getMetricTone(score: number) {
+    if (score <= 0) {
+        return 'text-zinc-500';
+    }
+    if (score >= 85) {
+        return 'text-emerald-300';
+    }
+    if (score >= 65) {
+        return 'text-amber-300';
+    }
+    return 'text-red-300';
+}
+
+function formatMetricValue(value: number, suffix = '') {
+    if (value <= 0) {
+        return 'Unavailable';
+    }
+    return `${value.toFixed(1)}${suffix}`;
+}
 
 export default function Criminals() {
     const queryClient = useQueryClient();
@@ -584,7 +637,11 @@ export default function Criminals() {
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {viewingFaces.map((face: CriminalFace, index: number) => (
+                                        {viewingFaces.map((face: CriminalFace, index: number) => {
+                                            const qualityBadge = getFaceQualityBadge(face);
+                                            const faceWarnings = getStoredFaceWarnings(face);
+
+                                            return (
                                             <div key={face.id} className="relative pl-8">
                                                 {index !== viewingFaces.length - 1 && (
                                                     <div className="absolute left-[11px] top-8 h-[calc(100%-1rem)] w-px bg-zinc-800" />
@@ -616,6 +673,9 @@ export default function Criminals() {
                                                                     <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
                                                                         {face.is_primary ? 'Active' : 'Archived'}
                                                                     </span>
+                                                                    <Badge variant={qualityBadge.variant}>
+                                                                        {qualityBadge.label}
+                                                                    </Badge>
                                                                 </div>
                                                             </div>
 
@@ -626,6 +686,84 @@ export default function Criminals() {
                                                                 <p>
                                                                     Face ID: <span className="font-mono text-zinc-400">{face.id}</span>
                                                                 </p>
+                                                            </div>
+
+                                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                                                    <div>
+                                                                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                                                                            Recognition Quality
+                                                                        </p>
+                                                                        <p className="mt-1 text-sm text-zinc-300">
+                                                                            Stored quality metrics that affect how reliably this face can match during identification.
+                                                                        </p>
+                                                                    </div>
+                                                                    {faceWarnings.length === 0 ? (
+                                                                        <div className="flex items-center gap-2 rounded-full border border-emerald-900/50 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-200">
+                                                                            <ShieldCheck className="h-3.5 w-3.5" />
+                                                                            No active quality warnings
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2 rounded-full border border-amber-900/50 bg-amber-950/30 px-3 py-1 text-xs text-amber-200">
+                                                                            <ShieldAlert className="h-3.5 w-3.5" />
+                                                                            {faceWarnings.length} warning{faceWarnings.length === 1 ? '' : 's'} to review
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Overall score</p>
+                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.quality_score)}`}>
+                                                                            {formatMetricValue(face.quality.quality_score)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Pose score</p>
+                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.pose_score)}`}>
+                                                                            {formatMetricValue(face.quality.pose_score)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Occlusion score</p>
+                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.occlusion_score)}`}>
+                                                                            {formatMetricValue(face.quality.occlusion_score)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Blur score</p>
+                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.blur_score)}`}>
+                                                                            {formatMetricValue(face.quality.blur_score)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Brightness</p>
+                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.brightness_score)}`}>
+                                                                            {formatMetricValue(face.quality.brightness_score)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Face area</p>
+                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.face_area_ratio * 100)}`}>
+                                                                            {formatMetricValue(face.quality.face_area_ratio * 100, '%')}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {faceWarnings.length > 0 && (
+                                                                    <div className="mt-4 rounded-lg border border-amber-900/50 bg-amber-950/20 p-3">
+                                                                        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-amber-300">
+                                                                            Recognition warnings
+                                                                        </p>
+                                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                                            {faceWarnings.map((warning) => (
+                                                                                <Badge key={warning} variant="warning" className="font-medium">
+                                                                                    {humanizeQualityLabel(warning)}
+                                                                                </Badge>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             {hasRole(['admin', 'senior_officer', 'field_officer']) && (
@@ -658,7 +796,8 @@ export default function Criminals() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

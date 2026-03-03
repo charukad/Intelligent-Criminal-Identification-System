@@ -2,23 +2,42 @@ import { useState, useRef } from 'react';
 import { UploadCloud, Loader2, UserCheck, UserX, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { recognitionApi, type RecognitionResult } from '@/api/recognition';
+import { recognitionApi } from '@/api/recognition';
+import { RecognitionDebugPanel } from '@/components/recognition/RecognitionDebugPanel';
+import type { RecognitionResponse, RecognitionResult } from '@/types/recognition';
+
+const decisionReasonLabels: Record<string, string> = {
+    matched: 'Match accepted',
+    over_threshold: 'Rejected: no close enough identity',
+    ambiguous: 'Rejected: ambiguous top candidates',
+    no_candidate_embeddings: 'Rejected: no enrolled faces available',
+    missing_criminal_record: 'Rejected: missing criminal record',
+};
+
+function formatDistance(value?: number | null) {
+    if (value === null || value === undefined) {
+        return 'n/a';
+    }
+    return value.toFixed(4);
+}
 
 export default function Identify() {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [results, setResults] = useState<RecognitionResult[] | null>(null);
+    const [recognitionResponse, setRecognitionResponse] = useState<RecognitionResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [debugEnabled, setDebugEnabled] = useState(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const results: RecognitionResult[] | null = recognitionResponse?.results ?? null;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
             setFile(selectedFile);
             setPreview(URL.createObjectURL(selectedFile));
-            setResults(null);
+            setRecognitionResponse(null);
             setError(null);
         }
     };
@@ -29,8 +48,8 @@ export default function Identify() {
         try {
             setIsLoading(true);
             setError(null);
-            const response = await recognitionApi.identifySuspect(file);
-            setResults(response.results);
+            const response = await recognitionApi.identifySuspect(file, { debug: debugEnabled });
+            setRecognitionResponse(response);
         } catch (err: any) {
             setError(err.response?.data?.detail || "Failed to identify faces.");
         } finally {
@@ -77,7 +96,28 @@ export default function Identify() {
                         />
                     </CardContent>
                     <CardFooter className="flex justify-end gap-3 px-6 pb-6">
-                        <Button variant="ghost" onClick={() => { setFile(null); setPreview(null); setResults(null); }} disabled={!file || isLoading}>Clear</Button>
+                        <label className="mr-auto flex items-center gap-2 text-sm text-zinc-400">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-emerald-500"
+                                checked={debugEnabled}
+                                onChange={(event) => setDebugEnabled(event.target.checked)}
+                                disabled={isLoading}
+                            />
+                            Show recognition diagnostics
+                        </label>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setFile(null);
+                                setPreview(null);
+                                setRecognitionResponse(null);
+                                setError(null);
+                            }}
+                            disabled={!file || isLoading}
+                        >
+                            Clear
+                        </Button>
                         <Button onClick={handleIdentify} disabled={!file || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg w-32">
                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                             {isLoading ? 'Scanning...' : 'Identify'}
@@ -128,6 +168,11 @@ export default function Identify() {
                                         {result.confidence.toFixed(1)}% Match
                                     </span>
                                 </div>
+                                <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-zinc-500">
+                                    <span>Decision: {decisionReasonLabels[result.decision_reason] ?? result.decision_reason}</span>
+                                    <span>Distance: <span className="font-mono text-zinc-300">{formatDistance(result.distance)}</span></span>
+                                    <span>Box: <span className="font-mono text-zinc-300">{result.box.join(', ')}</span></span>
+                                </div>
                             </CardHeader>
                             {result.status === 'match' && result.criminal && (
                                 <CardContent>
@@ -154,6 +199,10 @@ export default function Identify() {
                             )}
                         </Card>
                     ))}
+
+                    {debugEnabled && recognitionResponse?.debug && (
+                        <RecognitionDebugPanel debug={recognitionResponse.debug} />
+                    )}
                 </div>
             </div>
         </div>

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update, desc
@@ -65,3 +65,20 @@ class FaceRepository(BaseRepository[FaceEmbedding]):
         )
         result = await self.session.execute(statement)
         return result.scalars().all()
+
+    async def bulk_update_template_membership(
+        self,
+        updates: dict[UUID, dict[str, Any]],
+    ) -> None:
+        if not updates:
+            return
+
+        for face_id, values in updates.items():
+            statement = (
+                update(FaceEmbedding)
+                .where(FaceEmbedding.id == face_id)
+                .values(**values)
+            )
+            await self.session.execute(statement)
+
+        await self.session.commit()

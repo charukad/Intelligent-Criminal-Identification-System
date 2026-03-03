@@ -1,0 +1,273 @@
+{
+  "configuration": {
+    "embedding_version": null,
+    "probable_threshold": 0.004,
+    "review_threshold": 0.005,
+    "top_criminal_pairs": 25,
+    "top_face_pairs_per_group": 5
+  },
+  "dataset": {
+    "face_count": 10,
+    "criminal_count": 3
+  },
+  "summary": {
+    "flagged_criminal_count": 3,
+    "suspicious_criminal_pair_count": 3,
+    "suspicious_face_pair_count": 10,
+    "probable_duplicate_criminal_pair_count": 3,
+    "needs_review_criminal_pair_count": 0
+  },
+  "suspicious_criminal_pairs": [
+    {
+      "criminal_a": {
+        "id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+        "name": "shehani kahadacala"
+      },
+      "criminal_b": {
+        "id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+        "name": "staring world"
+      },
+      "risk_level": "probable_duplicate",
+      "minimum_distance": 0.003162,
+      "review_face_pair_count": 1,
+      "probable_duplicate_face_pair_count": 1,
+      "total_cross_face_pair_count": 12,
+      "face_pairs": [
+        {
+          "distance": 0.003162,
+          "risk_level": "probable_duplicate",
+          "face_a": {
+            "face_id": "968ac061-49b2-4160-b7b2-ba1c6877b6a1",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/968ac061-49b2-4160-b7b2-ba1c6877b6a1.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "062fbd48-ea25-4c27-82da-629dd3b8d32d",
+            "criminal_id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+            "criminal_name": "staring world",
+            "image_url": "uploads/faces/e59c5b60-f817-4593-98a2-f83483ee8bfe/062fbd48-ea25-4c27-82da-629dd3b8d32d.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        },
+        {
+          "distance": 0.004267,
+          "risk_level": "needs_review",
+          "face_a": {
+            "face_id": "968ac061-49b2-4160-b7b2-ba1c6877b6a1",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/968ac061-49b2-4160-b7b2-ba1c6877b6a1.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "1d64956a-4a16-4a19-a749-a015148c135f",
+            "criminal_id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+            "criminal_name": "staring world",
+            "image_url": "uploads/faces/e59c5b60-f817-4593-98a2-f83483ee8bfe/1d64956a-4a16-4a19-a749-a015148c135f.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        }
+      ]
+    },
+    {
+      "criminal_a": {
+        "id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+        "name": "priyanka ares"
+      },
+      "criminal_b": {
+        "id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+        "name": "shehani kahadacala"
+      },
+      "risk_level": "probable_duplicate",
+      "minimum_distance": 0.003684,
+      "review_face_pair_count": 4,
+      "probable_duplicate_face_pair_count": 1,
+      "total_cross_face_pair_count": 12,
+      "face_pairs": [
+        {
+          "distance": 0.003684,
+          "risk_level": "probable_duplicate",
+          "face_a": {
+            "face_id": "38f97481-0b59-4791-9853-08ad7c6c9252",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/38f97481-0b59-4791-9853-08ad7c6c9252.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "968ac061-49b2-4160-b7b2-ba1c6877b6a1",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/968ac061-49b2-4160-b7b2-ba1c6877b6a1.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        },
+        {
+          "distance": 0.0049,
+          "risk_level": "needs_review",
+          "face_a": {
+            "face_id": "d4276f9f-5fdf-4542-87c1-528a781359cd",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/d4276f9f-5fdf-4542-87c1-528a781359cd.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "18a66b57-dfba-4060-a508-6d4441e6c28c",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/18a66b57-dfba-4060-a508-6d4441e6c28c.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": true
+          }
+        },
+        {
+          "distance": 0.004915,
+          "risk_level": "needs_review",
+          "face_a": {
+            "face_id": "38f97481-0b59-4791-9853-08ad7c6c9252",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/38f97481-0b59-4791-9853-08ad7c6c9252.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "18a66b57-dfba-4060-a508-6d4441e6c28c",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/18a66b57-dfba-4060-a508-6d4441e6c28c.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": true
+          }
+        },
+        {
+          "distance": 0.004927,
+          "risk_level": "needs_review",
+          "face_a": {
+            "face_id": "caf8c975-994f-4242-adbc-bbdebb94d2d2",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/caf8c975-994f-4242-adbc-bbdebb94d2d2.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": true
+          },
+          "face_b": {
+            "face_id": "3f817eaa-002c-464b-b511-67d4190d2bd6",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/3f817eaa-002c-464b-b511-67d4190d2bd6.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        },
+        {
+          "distance": 0.004983,
+          "risk_level": "needs_review",
+          "face_a": {
+            "face_id": "caf8c975-994f-4242-adbc-bbdebb94d2d2",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/caf8c975-994f-4242-adbc-bbdebb94d2d2.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": true
+          },
+          "face_b": {
+            "face_id": "18a66b57-dfba-4060-a508-6d4441e6c28c",
+            "criminal_id": "1c95f166-c047-43ec-a754-8e90d787ab9c",
+            "criminal_name": "shehani kahadacala",
+            "image_url": "uploads/faces/1c95f166-c047-43ec-a754-8e90d787ab9c/18a66b57-dfba-4060-a508-6d4441e6c28c.jpeg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": true
+          }
+        }
+      ]
+    },
+    {
+      "criminal_a": {
+        "id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+        "name": "priyanka ares"
+      },
+      "criminal_b": {
+        "id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+        "name": "staring world"
+      },
+      "risk_level": "probable_duplicate",
+      "minimum_distance": 0.003945,
+      "review_face_pair_count": 1,
+      "probable_duplicate_face_pair_count": 2,
+      "total_cross_face_pair_count": 9,
+      "face_pairs": [
+        {
+          "distance": 0.003945,
+          "risk_level": "probable_duplicate",
+          "face_a": {
+            "face_id": "38f97481-0b59-4791-9853-08ad7c6c9252",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/38f97481-0b59-4791-9853-08ad7c6c9252.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "1d64956a-4a16-4a19-a749-a015148c135f",
+            "criminal_id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+            "criminal_name": "staring world",
+            "image_url": "uploads/faces/e59c5b60-f817-4593-98a2-f83483ee8bfe/1d64956a-4a16-4a19-a749-a015148c135f.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        },
+        {
+          "distance": 0.003982,
+          "risk_level": "probable_duplicate",
+          "face_a": {
+            "face_id": "38f97481-0b59-4791-9853-08ad7c6c9252",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/38f97481-0b59-4791-9853-08ad7c6c9252.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "062fbd48-ea25-4c27-82da-629dd3b8d32d",
+            "criminal_id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+            "criminal_name": "staring world",
+            "image_url": "uploads/faces/e59c5b60-f817-4593-98a2-f83483ee8bfe/062fbd48-ea25-4c27-82da-629dd3b8d32d.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        },
+        {
+          "distance": 0.00451,
+          "risk_level": "needs_review",
+          "face_a": {
+            "face_id": "d4276f9f-5fdf-4542-87c1-528a781359cd",
+            "criminal_id": "1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b",
+            "criminal_name": "priyanka ares",
+            "image_url": "uploads/faces/1e1669a5-8e99-4b46-91dc-a7f13a6e1d2b/d4276f9f-5fdf-4542-87c1-528a781359cd.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          },
+          "face_b": {
+            "face_id": "1d64956a-4a16-4a19-a749-a015148c135f",
+            "criminal_id": "e59c5b60-f817-4593-98a2-f83483ee8bfe",
+            "criminal_name": "staring world",
+            "image_url": "uploads/faces/e59c5b60-f817-4593-98a2-f83483ee8bfe/1d64956a-4a16-4a19-a749-a015148c135f.jpg",
+            "embedding_version": "tracenet_v1",
+            "is_primary": false
+          }
+        }
+      ]
+    }
+  ]
+}

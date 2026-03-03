@@ -20,7 +20,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { FaceEnrollmentPicker } from '@/components/criminals/FaceEnrollmentPicker';
+import {
+    FaceEnrollmentPicker,
+    type FaceEnrollmentQualitySummary,
+} from '@/components/criminals/FaceEnrollmentPicker';
 import {
     renderCroppedFaceFile,
     revokeFaceCropDrafts,
@@ -61,6 +64,12 @@ export function CriminalDialog({
 }: CriminalDialogProps) {
     const [faceDrafts, setFaceDrafts] = useState<FaceCropDraft[]>([]);
     const [primaryFaceIndex, setPrimaryFaceIndex] = useState(-1);
+    const [qualitySummary, setQualitySummary] = useState<FaceEnrollmentQualitySummary>({
+        total: 0,
+        pending: 0,
+        rejected: 0,
+        warnings: 0,
+    });
     const [cropError, setCropError] = useState<string | null>(null);
     const [isPreparingImages, setIsPreparingImages] = useState(false);
     const {
@@ -96,6 +105,7 @@ export function CriminalDialog({
             revokeFaceCropDrafts(faceDrafts);
             setFaceDrafts([]);
             setPrimaryFaceIndex(-1);
+            setQualitySummary({ total: 0, pending: 0, rejected: 0, warnings: 0 });
             setCropError(null);
         } else {
             reset({
@@ -114,6 +124,7 @@ export function CriminalDialog({
             revokeFaceCropDrafts(faceDrafts);
             setFaceDrafts([]);
             setPrimaryFaceIndex(-1);
+            setQualitySummary({ total: 0, pending: 0, rejected: 0, warnings: 0 });
             setCropError(null);
         }
     }, [criminal, reset]);
@@ -123,6 +134,7 @@ export function CriminalDialog({
             revokeFaceCropDrafts(faceDrafts);
             setFaceDrafts([]);
             setPrimaryFaceIndex(-1);
+            setQualitySummary({ total: 0, pending: 0, rejected: 0, warnings: 0 });
             setCropError(null);
         }
     }, [open]);
@@ -131,8 +143,30 @@ export function CriminalDialog({
         return () => revokeFaceCropDrafts(faceDrafts);
     }, []);
 
+    useEffect(() => {
+        if (
+            cropError &&
+            qualitySummary.pending === 0 &&
+            qualitySummary.rejected === 0 &&
+            (cropError.includes('face quality checks') || cropError.includes('rejected face images'))
+        ) {
+            setCropError(null);
+        }
+    }, [cropError, qualitySummary]);
+
     const handleFormSubmit = async (data: CriminalFields) => {
         setCropError(null);
+
+        if (!criminal && qualitySummary.pending > 0) {
+            setCropError('Wait for face quality checks to finish before saving.');
+            return;
+        }
+
+        if (!criminal && qualitySummary.rejected > 0) {
+            setCropError('Remove or recrop rejected face images before saving.');
+            return;
+        }
+
         setIsPreparingImages(true);
 
         try {
@@ -339,6 +373,7 @@ export function CriminalDialog({
                             primaryIndex={primaryFaceIndex}
                             onDraftsChange={setFaceDrafts}
                             onPrimaryIndexChange={setPrimaryFaceIndex}
+                            onQualitySummaryChange={setQualitySummary}
                             disabled={isLoading || isPreparingImages}
                         />
                     )}
@@ -355,12 +390,18 @@ export function CriminalDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isLoading || isPreparingImages} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Button
+                            type="submit"
+                            disabled={isLoading || isPreparingImages || (!criminal && qualitySummary.pending > 0)}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
                             {isLoading || isPreparingImages ? (
                                 <>
                                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent"></div>
                                     {isPreparingImages ? 'Preparing Faces...' : 'Saving...'}
                                 </>
+                            ) : !criminal && qualitySummary.pending > 0 ? (
+                                'Checking Face Quality...'
                             ) : criminal ? (
                                 'Update Criminal'
                             ) : (

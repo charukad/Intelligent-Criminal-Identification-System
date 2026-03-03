@@ -22,6 +22,27 @@ export interface CriminalFace {
     embedding_version: string;
     created_at: string;
     box: [number, number, number, number];
+    quality: FaceQuality;
+}
+
+export interface FaceQuality {
+    status: 'accepted' | 'accepted_with_warnings' | 'rejected';
+    quality_score: number;
+    blur_score: number;
+    brightness_score: number;
+    face_area_ratio: number;
+    pose_score: number;
+    occlusion_score: number;
+    warnings: string[];
+}
+
+export interface FaceQualityPreview {
+    status: 'accepted' | 'accepted_with_warnings' | 'rejected';
+    detected_face_count: number;
+    decision_reason: string;
+    message: string;
+    box?: [number, number, number, number] | null;
+    quality?: FaceQuality | null;
 }
 
 export interface CriminalFormData {

@@ -1,0 +1,138 @@
+{
+  "configuration": {
+    "embedding_version": null,
+    "max_positive_pairs": 5000,
+    "max_negative_pairs": 5000,
+    "grid_size": 200,
+    "current_threshold": 0.01,
+    "seed": 42
+  },
+  "dataset": {
+    "face_count": 10,
+    "criminal_count": 3,
+    "criminals_with_multiple_faces": 3,
+    "embedding_versions": {
+      "tracenet_v1": 10
+    }
+  },
+  "positive_pairs": {
+    "metadata": {
+      "eligible_identity_count": 3,
+      "total_possible_pairs": 12,
+      "sampled_pairs": 12
+    },
+    "distance_summary": {
+      "count": 12,
+      "min": 0.002324,
+      "max": 0.00785,
+      "mean": 0.005018,
+      "std": 0.001776,
+      "median": 0.004675,
+      "p01": 0.002349,
+      "p05": 0.002451,
+      "p10": 0.002673,
+      "p25": 0.003772,
+      "p75": 0.006384,
+      "p90": 0.007493,
+      "p95": 0.007712,
+      "p99": 0.007822
+    }
+  },
+  "negative_pairs": {
+    "metadata": {
+      "total_possible_pairs": 33,
+      "sampled_pairs": 33
+    },
+    "distance_summary": {
+      "count": 33,
+      "min": 0.003162,
+      "max": 0.008728,
+      "mean": 0.005809,
+      "std": 0.001335,
+      "median": 0.005658,
+      "p01": 0.003329,
+      "p05": 0.003841,
+      "p10": 0.004039,
+      "p25": 0.004927,
+      "p75": 0.0067,
+      "p90": 0.007782,
+      "p95": 0.007991,
+      "p99": 0.008496
+    }
+  },
+  "separation": {
+    "positive_p95": 0.007712,
+    "negative_p05": 0.003841,
+    "estimated_overlap_ratio": 0.909091
+  },
+  "threshold_report": {
+    "current_threshold": {
+      "threshold": 0.01,
+      "true_accepts": 12,
+      "false_rejects": 0,
+      "false_accepts": 33,
+      "true_rejects": 0,
+      "tar": 1.0,
+      "frr": 0.0,
+      "far": 1.0,
+      "tnr": 0.0,
+      "precision": 0.266667,
+      "balanced_accuracy": 0.5
+    },
+    "scanned_threshold_count": 200,
+    "recommended": {
+      "best_balanced_accuracy": {
+        "threshold": 0.004898,
+        "true_accepts": 7,
+        "false_rejects": 5,
+        "false_accepts": 6,
+        "true_rejects": 27,
+        "tar": 0.583333,
+        "frr": 0.416667,
+        "far": 0.181818,
+        "tnr": 0.818182,
+        "precision": 0.538462,
+        "balanced_accuracy": 0.700758
+      },
+      "far_le_0.001": {
+        "threshold": 0.002581,
+        "true_accepts": 2,
+        "false_rejects": 10,
+        "false_accepts": 0,
+        "true_rejects": 33,
+        "tar": 0.166667,
+        "frr": 0.833333,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.583333
+      },
+      "far_le_0.010": {
+        "threshold": 0.002581,
+        "true_accepts": 2,
+        "false_rejects": 10,
+        "false_accepts": 0,
+        "true_rejects": 33,
+        "tar": 0.166667,
+        "frr": 0.833333,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.583333
+      },
+      "far_le_0.050": {
+        "threshold": 0.002581,
+        "true_accepts": 2,
+        "false_rejects": 10,
+        "false_accepts": 0,
+        "true_rejects": 33,
+        "tar": 0.166667,
+        "frr": 0.833333,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.583333
+      }
+    }
+  }
+}

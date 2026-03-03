@@ -1,11 +1,10 @@
-import os
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
 import numpy as np
 from PIL import Image
-from typing import List, Tuple, cast
+from typing import Any, List, Tuple, cast
 from torchvision import transforms
 from facenet_pytorch import MTCNN, InceptionResnetV1
 
@@ -56,6 +55,38 @@ class MTCNNStrategy(FaceDetectionStrategy):
                 result.append((x1, y1, w, h))
                 
             return result
+        except Exception as e:
+            logger.error(f"MTCNN Detection Error: {e}")
+            raise RuntimeError(f"MTCNN Face Detection failed: {e}") from e
+
+    def detect_faces_with_landmarks(self, image: np.ndarray) -> List[dict[str, Any]]:
+        """Detect faces and return bounding boxes with five-point landmarks."""
+        try:
+            pil_img = Image.fromarray(image)
+            boxes, _probs, landmarks = self.mtcnn.detect(pil_img, landmarks=True)
+
+            if boxes is None:
+                return []
+
+            results: List[dict[str, Any]] = []
+            for index, box in enumerate(boxes):
+                x1, y1, x2, y2 = [int(b) for b in box]
+                w = x2 - x1
+                h = y2 - y1
+                landmark_points = None
+                if landmarks is not None and len(landmarks) > index:
+                    landmark_points = [
+                        (float(point[0]), float(point[1]))
+                        for point in landmarks[index]
+                    ]
+                results.append(
+                    {
+                        "box": (x1, y1, w, h),
+                        "landmarks": landmark_points,
+                    }
+                )
+
+            return results
         except Exception as e:
             logger.error(f"MTCNN Detection Error: {e}")
             raise RuntimeError(f"MTCNN Face Detection failed: {e}") from e

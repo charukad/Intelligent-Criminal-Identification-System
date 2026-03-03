@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Criminal, CriminalFace } from '@/types/criminal';
+import type { Criminal, CriminalFace, FaceQualityPreview } from '@/types/criminal';
 
 export interface CriminalsListParams {
     page?: number;
@@ -79,6 +79,17 @@ export const criminalsApi = {
         formData.append('file', file);
         formData.append('is_primary', String(isPrimary));
         const { data } = await api.post(`/criminals/${criminalId}/faces`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return data;
+    },
+
+    previewFaceQuality: async (file: File): Promise<FaceQualityPreview> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const { data } = await api.post('/criminals/face-quality/preview', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

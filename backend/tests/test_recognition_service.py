@@ -15,6 +15,7 @@ async def test_identify_suspects_success(mock_cvtColor, mock_imdecode):
     
     # Mock dependencies
     pipeline = MagicMock()
+    template_repo = AsyncMock()
     face_repo = AsyncMock()
     criminal_repo = AsyncMock()
     audit_repo = AsyncMock()
@@ -25,28 +26,43 @@ async def test_identify_suspects_success(mock_cvtColor, mock_imdecode):
         {'box': [10, 10, 50, 50], 'embedding': mock_embedding}
     ]
     
-    mock_face = MagicMock()
-    mock_face.criminal_id = uuid4()
-    face_repo.find_nearest_neighbors.return_value = [(mock_face, 0.4)]
+    criminal_id = uuid4()
+    primary_face_id = uuid4()
+    mock_template = MagicMock()
+    mock_template.criminal_id = criminal_id
+    mock_template.primary_face_id = primary_face_id
+    mock_template.embedding_version = "tracenet_v1"
+    mock_template.template_version = "tracenet_template_v1"
+    mock_template.active_face_count = 2
+    mock_template.support_face_count = 1
+    mock_template.outlier_face_count = 0
+    template_repo.find_nearest_neighbors.return_value = [(mock_template, 0.4)]
+    face_repo.get.return_value = MagicMock(
+        id=primary_face_id,
+        image_url="uploads/faces/john.jpg",
+        is_primary=True,
+    )
     
     mock_criminal = MagicMock()
-    mock_criminal.id = mock_face.criminal_id
+    mock_criminal.id = criminal_id
     mock_criminal.first_name = "John"
     mock_criminal.last_name = "Doe"
     mock_criminal.nic = "123456789V"
     mock_criminal.threat_level = "HIGH"
     criminal_repo.get.return_value = mock_criminal
     
-    service = RecognitionService(pipeline, face_repo, criminal_repo, audit_repo)
+    service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
     
     # Execute with dummy bytes (cv2 is mocked)
-    results = await service.identify_suspects(b"fake_bytes", threshold=0.6)
+    response = await service.identify_suspects(b"fake_bytes", threshold=0.6)
+    results = response["results"]
     
     # Verify
     assert len(results) == 1
     assert results[0]['status'] == 'match'
     assert results[0]['criminal']['name'] == "John Doe"
-    assert results[0]['confidence'] > 90 # Based on 0.4 distance and sigmoid calibration
+    assert results[0]['distance'] == 0.4
+    assert results[0]['decision_reason'] == 'matched'
     
     # Verify audit log was created
     audit_repo.create.assert_called_once()
@@ -63,6 +79,7 @@ async def test_identify_suspects_uses_largest_face_only(mock_cvtColor, mock_imde
     mock_cvtColor.return_value = np.zeros((200, 200, 3), dtype=np.uint8)
 
     pipeline = MagicMock()
+    template_repo = AsyncMock()
     face_repo = AsyncMock()
     criminal_repo = AsyncMock()
     audit_repo = AsyncMock()
@@ -73,34 +90,51 @@ async def test_identify_suspects_uses_largest_face_only(mock_cvtColor, mock_imde
         {'box': [30, 30, 25, 25], 'embedding': [0.3] * 128},
     ]
 
-    mock_face = MagicMock()
-    mock_face.criminal_id = uuid4()
-    face_repo.find_nearest_neighbors.return_value = [(mock_face, 0.3)]
+    criminal_id = uuid4()
+    primary_face_id = uuid4()
+    mock_template = MagicMock()
+    mock_template.criminal_id = criminal_id
+    mock_template.primary_face_id = primary_face_id
+    mock_template.embedding_version = "tracenet_v1"
+    mock_template.template_version = "tracenet_template_v1"
+    mock_template.active_face_count = 2
+    mock_template.support_face_count = 1
+    mock_template.outlier_face_count = 0
+    template_repo.find_nearest_neighbors.return_value = [(mock_template, 0.3)]
+    face_repo.get.return_value = MagicMock(
+        id=primary_face_id,
+        image_url="uploads/faces/jane.jpg",
+        is_primary=True,
+    )
 
     mock_criminal = MagicMock()
-    mock_criminal.id = mock_face.criminal_id
+    mock_criminal.id = criminal_id
     mock_criminal.first_name = "Jane"
     mock_criminal.last_name = "Doe"
     mock_criminal.nic = "987654321V"
     mock_criminal.threat_level = "HIGH"
     criminal_repo.get.return_value = mock_criminal
 
-    service = RecognitionService(pipeline, face_repo, criminal_repo, audit_repo)
-    results = await service.identify_suspects(b"fake_bytes")
+    service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
+    response = await service.identify_suspects(b"fake_bytes", include_debug=True)
+    results = response["results"]
 
     assert len(results) == 1
-    assert results[0]['box'] == [10, 10, 120, 120]
-    face_repo.find_nearest_neighbors.assert_awaited_once_with([0.2] * 128, limit=5)
+    assert results[0]['box'] == (10, 10, 120, 120)
+    assert response["debug"]["detected_face_count"] == 3
+    assert response["debug"]["analyzed_face_count"] == 1
+    template_repo.find_nearest_neighbors.assert_awaited_once_with([0.2] * 128, limit=10)
 
 
 @pytest.mark.asyncio
 @patch('cv2.imdecode')
 @patch('cv2.cvtColor')
-async def test_identify_suspects_rejects_ambiguous_match(mock_cvtColor, mock_imdecode):
+async def test_identify_suspects_rejects_over_threshold_match(mock_cvtColor, mock_imdecode):
     mock_imdecode.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
     mock_cvtColor.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
 
     pipeline = MagicMock()
+    template_repo = AsyncMock()
     face_repo = AsyncMock()
     criminal_repo = AsyncMock()
     audit_repo = AsyncMock()
@@ -109,19 +143,19 @@ async def test_identify_suspects_rejects_ambiguous_match(mock_cvtColor, mock_imd
         {'box': [10, 10, 50, 50], 'embedding': [0.1] * 128}
     ]
 
-    best_face = MagicMock()
-    best_face.criminal_id = uuid4()
-    second_face = MagicMock()
-    second_face.criminal_id = uuid4()
-    face_repo.find_nearest_neighbors.return_value = [
-        (best_face, 0.38),
-        (second_face, 0.42),
+    best_template = MagicMock()
+    best_template.criminal_id = uuid4()
+    best_template.primary_face_id = uuid4()
+    template_repo.find_nearest_neighbors.return_value = [
+        (best_template, 0.015),
     ]
 
-    service = RecognitionService(pipeline, face_repo, criminal_repo, audit_repo)
-    results = await service.identify_suspects(b"fake_bytes")
+    service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
+    response = await service.identify_suspects(b"fake_bytes")
+    results = response["results"]
 
     assert len(results) == 1
     assert results[0]['status'] == 'unknown'
     assert results[0]['confidence'] == 0.0
+    assert results[0]['decision_reason'] == 'over_threshold'
     criminal_repo.get.assert_not_called()

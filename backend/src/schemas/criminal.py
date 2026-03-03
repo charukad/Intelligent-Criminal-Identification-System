@@ -3,6 +3,7 @@ from datetime import date, datetime
 from uuid import UUID
 from pydantic import BaseModel
 from src.domain.models.criminal import ThreatLevel, LegalStatus
+from src.schemas.face_quality import FaceQualityResponse
 
 class CriminalBaseSchema(BaseModel):
     nic: Optional[str] = None
@@ -55,3 +56,6 @@ class CriminalFaceResponse(BaseModel):
     embedding_version: str
     created_at: datetime
     box: tuple[int, int, int, int]
+    template_role: str
+    template_distance: float | None = None
+    quality: FaceQualityResponse

@@ -37,5 +37,6 @@ class Criminal(CriminalBase, table=True):
     
     # Relationships
     faces: List["FaceEmbedding"] = Relationship(back_populates="criminal")
+    identity_template: Optional["IdentityTemplate"] = Relationship(back_populates="criminal")
     offenses: List["Offense"] = Relationship(back_populates="criminal")
     # suspect_cases: List["CaseSuspect"] = Relationship(back_populates="criminal")

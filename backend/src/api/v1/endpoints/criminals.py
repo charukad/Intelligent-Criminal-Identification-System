@@ -8,11 +8,16 @@ from sqlmodel import select, col, func
 from src.infrastructure.database import get_db
 from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.face import FaceRepository
+from src.infrastructure.repositories.identity_template import IdentityTemplateRepository
 from src.infrastructure.repositories.audit import AuditRepository
 from src.services.criminal_service import CriminalService
+from src.services.ai.face_quality import sort_quality_warnings
+from src.services.face_quality_service import FaceQualityService
 from src.services.face_enrollment_service import FaceEnrollmentService, delete_stored_face_image
+from src.services.identity_template_service import IdentityTemplateService
 from src.services.ai.runtime import pipeline
 from src.schemas.criminal import CriminalCreate, CriminalResponse, CriminalUpdate, CriminalListResponse, CriminalFaceResponse
+from src.schemas.face_quality import FaceQualityPreviewResponse
 from src.api.deps import get_current_user, get_officer_or_above, get_admin_or_senior_officer
 from src.domain.models.user import User
 from src.domain.models.criminal import Criminal, ThreatLevel, LegalStatus
@@ -20,8 +25,23 @@ from src.domain.models.face import FaceEmbedding
 from src.domain.models.audit import AuditLog
 from src.domain.models.alert import Alert
 from src.domain.models.case import Offense
+from src.domain.models.identity_template import IdentityTemplate
 
 router = APIRouter()
+
+
+def serialize_face_quality(face: Any) -> dict[str, Any]:
+    warnings = face.quality_warnings.split("|") if getattr(face, "quality_warnings", None) else []
+    return {
+        "status": face.quality_status or "accepted",
+        "quality_score": float(face.quality_score or 0.0),
+        "blur_score": float(face.blur_score or 0.0),
+        "brightness_score": float(face.brightness_score or 0.0),
+        "face_area_ratio": float(face.face_area_ratio or 0.0),
+        "pose_score": float(face.pose_score or 0.0),
+        "occlusion_score": float(face.occlusion_score or 0.0),
+        "warnings": sort_quality_warnings(warnings),
+    }
 
 
 def serialize_face(face: Any) -> dict[str, Any]:
@@ -38,6 +58,9 @@ def serialize_face(face: Any) -> dict[str, Any]:
             face.box_w if face.box_w is not None else 0,
             face.box_h if face.box_h is not None else 0,
         ),
+        "template_role": getattr(face, "template_role", "archived"),
+        "template_distance": float(face.template_distance) if getattr(face, "template_distance", None) is not None else None,
+        "quality": serialize_face_quality(face),
     }
 
 
@@ -147,6 +170,26 @@ async def create_criminal(
     
     return await service.create_profile(criminal_obj)
 
+
+@router.post("/face-quality/preview", response_model=FaceQualityPreviewResponse)
+async def preview_face_quality(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_officer_or_above()),
+) -> Any:
+    """
+    Preview face-quality assessment for a cropped upload before enrollment.
+    """
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    content = await file.read()
+    service = FaceQualityService(pipeline)
+
+    try:
+        return service.preview_image(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
 @router.get("/{criminal_id}", response_model=CriminalResponse)
 async def read_criminal_by_id(
     criminal_id: UUID,
@@ -212,6 +255,7 @@ async def delete_criminal(
         delete_stored_face_image(face.image_url)
 
     await db.execute(sa_delete(FaceEmbedding).where(FaceEmbedding.criminal_id == criminal_id))
+    await db.execute(sa_delete(IdentityTemplate).where(IdentityTemplate.criminal_id == criminal_id))
     await db.execute(sa_delete(AuditLog).where(AuditLog.criminal_id == criminal_id))
     await db.execute(sa_delete(Alert).where(Alert.criminal_id == criminal_id))
     await db.execute(sa_delete(Offense).where(Offense.criminal_id == criminal_id))
@@ -240,7 +284,15 @@ async def enroll_criminal_face(
     face_repo = FaceRepository(db)
     criminal_repo = CriminalRepository(db)
     audit_repo = AuditRepository(db)
-    service = FaceEnrollmentService(pipeline, face_repo, criminal_repo, audit_repo)
+    template_repo = IdentityTemplateRepository(db)
+    template_service = IdentityTemplateService(template_repo, face_repo)
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
 
     try:
         return await service.enroll_face(
@@ -288,7 +340,15 @@ async def delete_criminal_face(
     face_repo = FaceRepository(db)
     criminal_repo = CriminalRepository(db)
     audit_repo = AuditRepository(db)
-    service = FaceEnrollmentService(pipeline, face_repo, criminal_repo, audit_repo)
+    template_repo = IdentityTemplateRepository(db)
+    template_service = IdentityTemplateService(template_repo, face_repo)
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
 
     try:
         return await service.delete_face(
@@ -313,7 +373,15 @@ async def set_criminal_face_as_primary(
     face_repo = FaceRepository(db)
     criminal_repo = CriminalRepository(db)
     audit_repo = AuditRepository(db)
-    service = FaceEnrollmentService(pipeline, face_repo, criminal_repo, audit_repo)
+    template_repo = IdentityTemplateRepository(db)
+    template_service = IdentityTemplateService(template_repo, face_repo)
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
 
     try:
         return await service.set_primary_face(

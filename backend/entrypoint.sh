@@ -38,5 +38,8 @@ async def seed_admin():
 asyncio.run(seed_admin())
 " || echo "⚠️ Admin seeding skipped (may already exist)"
 
+echo "🧠 Rebuilding identity templates..."
+python scripts/rebuild_identity_templates.py || echo "⚠️ Identity template rebuild skipped"
+
 echo "🚀 Starting TraceIQ Backend..."
 exec uvicorn src.main:app --host 0.0.0.0 --port 8000
