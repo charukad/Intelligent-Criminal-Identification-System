@@ -8,8 +8,9 @@ import type { RecognitionResponse, RecognitionResult } from '@/types/recognition
 
 const decisionReasonLabels: Record<string, string> = {
     matched: 'Match accepted',
-    over_threshold: 'Rejected: no close enough identity',
-    ambiguous: 'Rejected: ambiguous top candidates',
+    possible_match_threshold: 'Needs review: close but not strong enough',
+    possible_match_ambiguous: 'Needs review: top candidates are too close',
+    over_possible_threshold: 'Rejected: no close enough identity',
     no_candidate_embeddings: 'Rejected: no enrolled faces available',
     missing_criminal_record: 'Rejected: missing criminal record',
 };
@@ -28,6 +29,7 @@ export default function Identify() {
     const [recognitionResponse, setRecognitionResponse] = useState<RecognitionResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [debugEnabled, setDebugEnabled] = useState(true);
+    const [sceneModeEnabled, setSceneModeEnabled] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const results: RecognitionResult[] | null = recognitionResponse?.results ?? null;
@@ -48,7 +50,10 @@ export default function Identify() {
         try {
             setIsLoading(true);
             setError(null);
-            const response = await recognitionApi.identifySuspect(file, { debug: debugEnabled });
+            const response = await recognitionApi.identifySuspect(file, {
+                debug: debugEnabled,
+                mode: sceneModeEnabled ? 'scene' : 'single',
+            });
             setRecognitionResponse(response);
         } catch (err: any) {
             setError(err.response?.data?.detail || "Failed to identify faces.");
@@ -106,6 +111,16 @@ export default function Identify() {
                             />
                             Show recognition diagnostics
                         </label>
+                        <label className="flex items-center gap-2 text-sm text-zinc-400">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-emerald-500"
+                                checked={sceneModeEnabled}
+                                onChange={(event) => setSceneModeEnabled(event.target.checked)}
+                                disabled={isLoading}
+                            />
+                            Scene mode
+                        </label>
                         <Button
                             variant="ghost"
                             onClick={() => {
@@ -157,15 +172,42 @@ export default function Identify() {
                     )}
 
                     {results && results.map((result, idx) => (
-                        <Card key={idx} className={`border-l-4 ${result.status === 'match' ? 'border-l-red-500' : 'border-l-zinc-500'} bg-zinc-950`}>
+                        <Card
+                            key={idx}
+                            className={`border-l-4 ${
+                                result.status === 'match'
+                                    ? 'border-l-red-500'
+                                    : result.status === 'possible_match'
+                                        ? 'border-l-amber-500'
+                                        : 'border-l-zinc-500'
+                            } bg-zinc-950`}
+                        >
                             <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-base flex items-center gap-2">
-                                        {result.status === 'match' ? <UserCheck className="text-red-500 w-5 h-5" /> : <UserX className="text-zinc-500 w-5 h-5" />}
-                                        {result.status === 'match' ? 'Database Match Found' : 'Unknown Individual'}
+                                        {result.status === 'match' ? (
+                                            <UserCheck className="text-red-500 w-5 h-5" />
+                                        ) : result.status === 'possible_match' ? (
+                                            <AlertTriangle className="text-amber-500 w-5 h-5" />
+                                        ) : (
+                                            <UserX className="text-zinc-500 w-5 h-5" />
+                                        )}
+                                        {result.status === 'match'
+                                            ? 'Database Match Found'
+                                            : result.status === 'possible_match'
+                                                ? 'Possible Match'
+                                                : 'Unknown Individual'}
                                     </CardTitle>
-                                    <span className={`text-xs px-2 py-1 rounded font-mono ${result.status === 'match' ? 'bg-red-950/50 text-red-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                                        {result.confidence.toFixed(1)}% Match
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded font-mono ${
+                                            result.status === 'match'
+                                                ? 'bg-red-950/50 text-red-400'
+                                                : result.status === 'possible_match'
+                                                    ? 'bg-amber-950/50 text-amber-300'
+                                                    : 'bg-zinc-800 text-zinc-400'
+                                        }`}
+                                    >
+                                        {result.confidence.toFixed(1)}% Confidence
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-zinc-500">
@@ -174,7 +216,7 @@ export default function Identify() {
                                     <span>Box: <span className="font-mono text-zinc-300">{result.box.join(', ')}</span></span>
                                 </div>
                             </CardHeader>
-                            {result.status === 'match' && result.criminal && (
+                            {(result.status === 'match' || result.status === 'possible_match') && result.criminal && (
                                 <CardContent>
                                     <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm mt-2">
                                         <div>
@@ -187,13 +229,21 @@ export default function Identify() {
                                         </div>
                                         <div>
                                             <p className="text-xs text-zinc-500">Threat Level</p>
-                                            <span className="inline-flex items-center rounded-full mt-1 px-2 py-0.5 text-xs font-medium bg-red-950 text-red-400 border border-red-900">
+                                            <span
+                                                className={`inline-flex items-center rounded-full mt-1 px-2 py-0.5 text-xs font-medium border ${
+                                                    result.status === 'match'
+                                                        ? 'bg-red-950 text-red-400 border-red-900'
+                                                        : 'bg-amber-950 text-amber-300 border-amber-900'
+                                                }`}
+                                            >
                                                 {result.criminal.threat_level}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-zinc-800">
-                                        <Button variant="outline" size="sm" className="w-full text-xs">View Full Profile</Button>
+                                        <Button variant="outline" size="sm" className="w-full text-xs">
+                                            {result.status === 'match' ? 'View Full Profile' : 'Review Candidate'}
+                                        </Button>
                                     </div>
                                 </CardContent>
                             )}

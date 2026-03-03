@@ -16,12 +16,16 @@ class RecognitionCandidate(BaseModel):
     image_url: str
     is_primary: bool
     embedding_version: str
+    template_version: str
+    active_face_count: int
+    support_face_count: int
+    outlier_face_count: int
     distance: float
 
 
 class RecognitionResult(BaseModel):
     box: tuple[int, int, int, int]
-    status: Literal["match", "unknown"]
+    status: Literal["match", "possible_match", "unknown"]
     confidence: float
     decision_reason: str
     distance: Optional[float] = None
@@ -40,7 +44,9 @@ class RecognitionDebugFace(BaseModel):
 
 class RecognitionDebug(BaseModel):
     threshold: float
-    ambiguity_margin: float
+    possible_match_threshold: float
+    match_separation_margin: float
+    possible_match_separation_margin: float
     single_face_only: bool
     detected_face_count: int
     analyzed_face_count: int

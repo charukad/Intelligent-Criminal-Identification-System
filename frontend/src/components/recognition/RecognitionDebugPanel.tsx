@@ -8,8 +8,9 @@ interface RecognitionDebugPanelProps {
 
 const decisionReasonLabels: Record<string, string> = {
     matched: 'Accepted match',
-    over_threshold: 'Rejected: distance above threshold',
-    ambiguous: 'Rejected: ambiguous candidate',
+    possible_match_threshold: 'Review: near threshold band',
+    possible_match_ambiguous: 'Review: top candidates are too close',
+    over_possible_threshold: 'Rejected: distance above possible-match band',
     no_candidate_embeddings: 'Rejected: no enrolled candidates',
     missing_criminal_record: 'Rejected: missing criminal record',
 };
@@ -49,13 +50,23 @@ export function RecognitionDebugPanel({ debug }: RecognitionDebugPanelProps) {
                         <p className="mt-1 text-xl font-semibold text-zinc-100">{debug.analyzed_face_count}</p>
                     </div>
                     <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
-                        <p className="text-xs uppercase tracking-wide text-zinc-500">Threshold</p>
+                        <p className="text-xs uppercase tracking-wide text-zinc-500">Match Threshold</p>
                         <p className="mt-1 text-xl font-semibold text-zinc-100">{formatDistance(debug.threshold)}</p>
                     </div>
                     <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
                         <p className="text-xs uppercase tracking-wide text-zinc-500">Mode</p>
                         <p className="mt-1 text-xl font-semibold text-zinc-100">
                             {debug.single_face_only ? 'Largest face only' : 'All faces'}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-zinc-500">Possible Threshold</p>
+                        <p className="mt-1 text-xl font-semibold text-zinc-100">{formatDistance(debug.possible_match_threshold)}</p>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-zinc-500">Separation</p>
+                        <p className="mt-1 text-xl font-semibold text-zinc-100">
+                            {formatDistance(debug.match_separation_margin)} / {formatDistance(debug.possible_match_separation_margin)}
                         </p>
                     </div>
                 </div>
@@ -73,7 +84,15 @@ export function RecognitionDebugPanel({ debug }: RecognitionDebugPanelProps) {
                                         <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-sm font-semibold text-zinc-100">Analyzed Face #{index + 1}</p>
                                             {face.selected && <Badge variant="info">selected</Badge>}
-                                            <Badge variant={face.decision_reason === 'matched' ? 'success' : 'warning'}>
+                                            <Badge
+                                                variant={
+                                                    face.decision_reason === 'matched'
+                                                        ? 'success'
+                                                        : face.decision_reason.startsWith('possible_match')
+                                                            ? 'warning'
+                                                            : 'outline'
+                                                }
+                                            >
                                                 {decisionReasonLabels[face.decision_reason] ?? face.decision_reason}
                                             </Badge>
                                         </div>
@@ -110,6 +129,10 @@ export function RecognitionDebugPanel({ debug }: RecognitionDebugPanelProps) {
                                                     <div className="text-xs text-zinc-400">
                                                         <p className="font-mono text-zinc-200">{formatDistance(candidate.distance)}</p>
                                                         <p>{candidate.embedding_version}</p>
+                                                        <p>{candidate.template_version}</p>
+                                                        <p>
+                                                            {candidate.active_face_count} active · {candidate.support_face_count} support · {candidate.outlier_face_count} outlier
+                                                        </p>
                                                     </div>
                                                     <div className="flex items-center justify-start md:justify-end">
                                                         <Badge variant={candidate.is_primary ? 'success' : 'outline'}>

@@ -3,16 +3,20 @@ import cv2
 import numpy as np
 
 from src.services.ai.pipeline import FaceProcessingPipeline
+from src.services.candidate_reranker import CandidateReranker
+from src.services.recognition_policy_service import (
+    DEFAULT_MATCH_SEPARATION_MARGIN,
+    DEFAULT_MATCH_THRESHOLD,
+    DEFAULT_POSSIBLE_MATCH_SEPARATION_MARGIN,
+    DEFAULT_POSSIBLE_MATCH_THRESHOLD,
+    RecognitionPolicyService,
+)
 from src.infrastructure.repositories.face import FaceRepository
 from src.infrastructure.repositories.identity_template import IdentityTemplateRepository
 from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.audit import AuditRepository
 from src.domain.models.audit import AuditLog
 from src.core.logging import logger
-
-
-DEFAULT_MATCH_THRESHOLD = 0.01
-DEFAULT_AMBIGUITY_MARGIN = 0.0
 
 
 class RecognitionService:
@@ -22,19 +26,25 @@ class RecognitionService:
         template_repo: IdentityTemplateRepository,
         face_repo: FaceRepository,
         criminal_repo: CriminalRepository,
-        audit_repo: AuditRepository
+        audit_repo: AuditRepository,
+        policy_service: RecognitionPolicyService | None = None,
+        candidate_reranker: CandidateReranker | None = None,
     ):
         self.pipeline = pipeline
         self.template_repo = template_repo
         self.face_repo = face_repo
         self.criminal_repo = criminal_repo
         self.audit_repo = audit_repo
+        self.policy_service = policy_service or RecognitionPolicyService()
+        self.candidate_reranker = candidate_reranker or CandidateReranker()
 
     async def identify_suspects(
         self,
         image_bytes: bytes,
         threshold: float = DEFAULT_MATCH_THRESHOLD,
-        ambiguity_margin: float = DEFAULT_AMBIGUITY_MARGIN,
+        possible_match_threshold: float = DEFAULT_POSSIBLE_MATCH_THRESHOLD,
+        match_separation_margin: float = DEFAULT_MATCH_SEPARATION_MARGIN,
+        possible_match_separation_margin: float = DEFAULT_POSSIBLE_MATCH_SEPARATION_MARGIN,
         single_face_only: bool = True,
         include_debug: bool = False,
     ) -> Dict[str, Any]:
@@ -66,7 +76,9 @@ class RecognitionService:
             box = tuple(int(value) for value in face_data['box'])
             area = int(box[2] * box[3])
             
-            ranked_candidates = await self._rank_criminal_candidates(embedding, limit=10)
+            ranked_candidates = self.candidate_reranker.rerank(
+                await self._rank_criminal_candidates(embedding, limit=10)
+            )
 
             if not ranked_candidates:
                 decision_reason = "no_candidate_embeddings"
@@ -95,10 +107,16 @@ class RecognitionService:
             second_best_other_distance = (
                 float(ranked_candidates[1]["distance"]) if len(ranked_candidates) > 1 else None
             )
-            confidence = self._score_distance(distance, threshold)
-            
-            if distance > threshold:
-                decision_reason = "over_threshold"
+            decision = self.policy_service.evaluate(
+                best_distance=distance,
+                second_best_distance=second_best_other_distance,
+                match_threshold=threshold,
+                possible_match_threshold=possible_match_threshold,
+                match_separation_margin=match_separation_margin,
+                possible_match_separation_margin=possible_match_separation_margin,
+            )
+
+            if decision.status == "unknown":
                 debug_top_candidates = []
                 if include_debug:
                     debug_top_candidates = await self._enrich_candidates(ranked_candidates[:3])
@@ -107,7 +125,7 @@ class RecognitionService:
                     "status": "unknown",
                     "confidence": 0.0,
                     "distance": distance,
-                    "decision_reason": decision_reason,
+                    "decision_reason": decision.decision_reason,
                 }
                 final_results.append(result)
                 if include_debug:
@@ -115,48 +133,13 @@ class RecognitionService:
                         "box": box,
                         "area": area,
                         "selected": True,
-                        "decision_reason": decision_reason,
+                        "decision_reason": decision.decision_reason,
                         "best_distance": distance,
                         "second_best_distance": second_best_other_distance,
                         "top_candidates": debug_top_candidates,
                     })
                 continue
 
-            if (
-                ambiguity_margin > 0
-                and second_best_other_distance is not None
-                and (second_best_other_distance - distance) < ambiguity_margin
-            ):
-                decision_reason = "ambiguous"
-                debug_top_candidates = []
-                if include_debug:
-                    debug_top_candidates = await self._enrich_candidates(ranked_candidates[:3])
-                logger.info(
-                    "Rejected ambiguous recognition candidate. best_distance=%.4f second_best_distance=%.4f",
-                    distance,
-                    second_best_other_distance,
-                )
-                result = {
-                    "box": box,
-                    "status": "unknown",
-                    "confidence": 0.0,
-                    "distance": distance,
-                    "decision_reason": decision_reason,
-                }
-                final_results.append(result)
-                if include_debug:
-                    debug_faces.append({
-                        "box": box,
-                        "area": area,
-                        "selected": True,
-                        "decision_reason": decision_reason,
-                        "best_distance": distance,
-                        "second_best_distance": second_best_other_distance,
-                        "top_candidates": debug_top_candidates,
-                    })
-                continue
-            
-            decision_reason = "matched"
             best_candidate_data = await self._enrich_candidate(best_candidate)
             if best_candidate_data is None:
                 logger.warning(
@@ -185,10 +168,10 @@ class RecognitionService:
 
             result = {
                 "box": box,
-                "status": "match",
-                "confidence": confidence,
+                "status": decision.status,
+                "confidence": decision.confidence,
                 "distance": distance,
-                "decision_reason": decision_reason,
+                "decision_reason": decision.decision_reason,
                 "criminal": best_candidate_data["criminal"],
             }
             final_results.append(result)
@@ -198,7 +181,7 @@ class RecognitionService:
                     "box": box,
                     "area": area,
                     "selected": True,
-                    "decision_reason": decision_reason,
+                    "decision_reason": decision.decision_reason,
                     "best_distance": distance,
                     "second_best_distance": second_best_other_distance,
                     "top_candidates": debug_top_candidates,
@@ -215,7 +198,9 @@ class RecognitionService:
         if include_debug:
             debug_payload = {
                 "threshold": threshold,
-                "ambiguity_margin": ambiguity_margin,
+                "possible_match_threshold": possible_match_threshold,
+                "match_separation_margin": match_separation_margin,
+                "possible_match_separation_margin": possible_match_separation_margin,
                 "single_face_only": single_face_only,
                 "detected_face_count": detected_face_count,
                 "analyzed_face_count": len(processed_faces),
@@ -296,9 +281,3 @@ class RecognitionService:
             "outlier_face_count": template.outlier_face_count,
             "distance": ranked_candidate["distance"],
         }
-
-    def _score_distance(self, distance: float, threshold: float) -> float:
-        if threshold <= 0:
-            return 0.0
-        normalized = 1.0 - (distance / threshold)
-        return float(max(0.0, min(100.0, normalized * 100.0)))

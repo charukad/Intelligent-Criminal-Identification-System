@@ -11,12 +11,16 @@ export interface RecognitionCandidate {
     image_url: string;
     is_primary: boolean;
     embedding_version: string;
+    template_version: string;
+    active_face_count: number;
+    support_face_count: number;
+    outlier_face_count: number;
     distance: number;
 }
 
 export interface RecognitionResult {
     box: [number, number, number, number];
-    status: 'match' | 'unknown';
+    status: 'match' | 'possible_match' | 'unknown';
     confidence: number;
     decision_reason: string;
     distance?: number | null;
@@ -35,7 +39,9 @@ export interface RecognitionDebugFace {
 
 export interface RecognitionDebug {
     threshold: number;
-    ambiguity_margin: number;
+    possible_match_threshold: number;
+    match_separation_margin: number;
+    possible_match_separation_margin: number;
     single_face_only: boolean;
     detected_face_count: number;
     analyzed_face_count: number;

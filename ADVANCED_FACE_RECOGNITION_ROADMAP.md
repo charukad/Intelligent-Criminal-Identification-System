@@ -25,7 +25,7 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 | M0 | Diagnostics and evaluation | We can explain why a recognition result happened | In progress |
 | M1 | Enrollment quality gate | Bad face data is blocked before it enters the system | In progress |
 | M2 | Identity template modeling | Each criminal is represented as a stable multi-image identity profile | In progress |
-| M3 | Recognition decision engine | Match decisions are calibrated and tiered | Not started |
+| M3 | Recognition decision engine | Match decisions are calibrated and tiered | Completed |
 | M4 | Duplicate-person detection | Same person across multiple criminal records is flagged | Not started |
 | M5 | Frontend review and operator workflow | Operators can review, inspect, and correct recognition behavior | Not started |
 | M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Not started |
@@ -159,6 +159,14 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 
 ## M3. Recognition Decision Engine
 
+### Progress
+- [x] Added a recognition policy service with `match`, `possible_match`, and `unknown` outcomes.
+- [x] Added template-candidate reranking before final decision evaluation.
+- [x] Added explicit scene mode versus single-face mode in the recognition API.
+- [x] Updated the Identify page and diagnostics UI for tiered decisions and template metadata.
+- [x] Extended the evaluator with holdout template calibration and generated a live policy report from the Docker database.
+- [x] Replaced hand-set decision defaults with measured template-level thresholds and separation margins.
+
 ### Deliverables
 - Replace current single nearest-neighbor rule with calibrated decision bands.
 - Add three outcomes: `match`, `possible_match`, `unknown`.
@@ -174,7 +182,9 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 - `backend/src/services/recognition_service.py`
 - `backend/src/infrastructure/repositories/face.py`
 - `backend/src/api/v1/endpoints/recognition.py`
+- `backend/scripts/evaluate_embeddings.py`
 - `backend/tests/test_recognition_service.py`
+- `backend/tests/test_evaluate_embeddings.py`
 - `frontend/src/api/recognition.ts`
 - `frontend/src/pages/Identify.tsx`
 
@@ -183,6 +193,7 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 - Weak candidates become `possible_match` or `unknown`, not forced `match`.
 - Single-face uploads default to one analyzed subject.
 - Scene mode clearly separates multiple detected people.
+- Match and possible-match defaults come from measured template calibration, not guessed constants.
 
 ## M4. Duplicate-Person Detection
 

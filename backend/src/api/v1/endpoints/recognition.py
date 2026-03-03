@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,7 @@ router = APIRouter()
 async def identify_suspect(
     file: UploadFile = File(...),
     debug: bool = Query(False),
+    mode: Literal["single", "scene"] = Query("single"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Any:
@@ -38,7 +39,11 @@ async def identify_suspect(
     service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
     
     try:
-        response = await service.identify_suspects(content, include_debug=debug)
+        response = await service.identify_suspects(
+            content,
+            single_face_only=(mode != "scene"),
+            include_debug=debug,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return response

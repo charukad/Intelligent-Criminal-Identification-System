@@ -6,6 +6,7 @@ export const recognitionApi = {
         file: File,
         options?: {
             debug?: boolean;
+            mode?: 'single' | 'scene';
         }
     ): Promise<RecognitionResponse> => {
         const formData = new FormData();
@@ -14,6 +15,7 @@ export const recognitionApi = {
         const response = await api.post<RecognitionResponse>('/recognition/identify', formData, {
             params: {
                 debug: options?.debug ?? false,
+                mode: options?.mode ?? 'single',
             },
             headers: {
                 'Content-Type': 'multipart/form-data',

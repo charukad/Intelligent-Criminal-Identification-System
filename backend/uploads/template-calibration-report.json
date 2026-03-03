@@ -1,0 +1,403 @@
+{
+  "configuration": {
+    "embedding_version": null,
+    "max_positive_pairs": 5000,
+    "max_negative_pairs": 5000,
+    "grid_size": 200,
+    "current_threshold": 0.01,
+    "current_match_threshold": 0.003579,
+    "current_possible_match_threshold": 0.00665,
+    "current_match_separation_margin": 0.000268,
+    "current_possible_match_separation_margin": 0.000144,
+    "max_template_probes": 5000,
+    "seed": 42
+  },
+  "dataset": {
+    "face_count": 10,
+    "criminal_count": 3,
+    "criminals_with_multiple_faces": 3,
+    "embedding_versions": {
+      "tracenet_v1": 10
+    }
+  },
+  "positive_pairs": {
+    "metadata": {
+      "eligible_identity_count": 3,
+      "total_possible_pairs": 12,
+      "sampled_pairs": 12
+    },
+    "distance_summary": {
+      "count": 12,
+      "min": 0.002324,
+      "max": 0.00785,
+      "mean": 0.005018,
+      "std": 0.001776,
+      "median": 0.004675,
+      "p01": 0.002349,
+      "p05": 0.002451,
+      "p10": 0.002673,
+      "p25": 0.003772,
+      "p75": 0.006384,
+      "p90": 0.007493,
+      "p95": 0.007712,
+      "p99": 0.007822
+    }
+  },
+  "negative_pairs": {
+    "metadata": {
+      "total_possible_pairs": 33,
+      "sampled_pairs": 33
+    },
+    "distance_summary": {
+      "count": 33,
+      "min": 0.003162,
+      "max": 0.008728,
+      "mean": 0.005809,
+      "std": 0.001335,
+      "median": 0.005658,
+      "p01": 0.003329,
+      "p05": 0.003841,
+      "p10": 0.004039,
+      "p25": 0.004927,
+      "p75": 0.0067,
+      "p90": 0.007782,
+      "p95": 0.007991,
+      "p99": 0.008496
+    }
+  },
+  "separation": {
+    "positive_p95": 0.007712,
+    "negative_p05": 0.003841,
+    "estimated_overlap_ratio": 0.909091
+  },
+  "threshold_report": {
+    "current_threshold": {
+      "threshold": 0.01,
+      "true_accepts": 12,
+      "false_rejects": 0,
+      "false_accepts": 33,
+      "true_rejects": 0,
+      "tar": 1.0,
+      "frr": 0.0,
+      "far": 1.0,
+      "tnr": 0.0,
+      "precision": 0.266667,
+      "balanced_accuracy": 0.5
+    },
+    "scanned_threshold_count": 200,
+    "recommended": {
+      "best_balanced_accuracy": {
+        "threshold": 0.004898,
+        "true_accepts": 7,
+        "false_rejects": 5,
+        "false_accepts": 6,
+        "true_rejects": 27,
+        "tar": 0.583333,
+        "frr": 0.416667,
+        "far": 0.181818,
+        "tnr": 0.818182,
+        "precision": 0.538462,
+        "balanced_accuracy": 0.700758
+      },
+      "far_le_0.001": {
+        "threshold": 0.002581,
+        "true_accepts": 2,
+        "false_rejects": 10,
+        "false_accepts": 0,
+        "true_rejects": 33,
+        "tar": 0.166667,
+        "frr": 0.833333,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.583333
+      },
+      "far_le_0.010": {
+        "threshold": 0.002581,
+        "true_accepts": 2,
+        "false_rejects": 10,
+        "false_accepts": 0,
+        "true_rejects": 33,
+        "tar": 0.166667,
+        "frr": 0.833333,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.583333
+      },
+      "far_le_0.050": {
+        "threshold": 0.002581,
+        "true_accepts": 2,
+        "false_rejects": 10,
+        "false_accepts": 0,
+        "true_rejects": 33,
+        "tar": 0.166667,
+        "frr": 0.833333,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.583333
+      },
+      "far_le_0.100": {
+        "threshold": 0.003804,
+        "true_accepts": 4,
+        "false_rejects": 8,
+        "false_accepts": 2,
+        "true_rejects": 31,
+        "tar": 0.333333,
+        "frr": 0.666667,
+        "far": 0.060606,
+        "tnr": 0.939394,
+        "precision": 0.666667,
+        "balanced_accuracy": 0.636364
+      }
+    }
+  },
+  "template_calibration": {
+    "dataset": {
+      "template_count": 3,
+      "total_eligible_probe_faces": 10,
+      "evaluated_probe_faces": 10,
+      "skipped_no_holdout_faces": 0
+    },
+    "positive_probe_distances": {
+      "distance_summary": {
+        "count": 10,
+        "min": 0.002183,
+        "max": 0.006735,
+        "mean": 0.004208,
+        "std": 0.001486,
+        "median": 0.003941,
+        "p01": 0.002238,
+        "p05": 0.002455,
+        "p10": 0.002727,
+        "p25": 0.002976,
+        "p75": 0.005003,
+        "p90": 0.006566,
+        "p95": 0.00665,
+        "p99": 0.006718
+      }
+    },
+    "nearest_other_template_distances": {
+      "distance_summary": {
+        "count": 10,
+        "min": 0.003882,
+        "max": 0.006525,
+        "mean": 0.004783,
+        "std": 0.000858,
+        "median": 0.004363,
+        "p01": 0.003901,
+        "p05": 0.003977,
+        "p10": 0.004072,
+        "p25": 0.004276,
+        "p75": 0.005016,
+        "p90": 0.006248,
+        "p95": 0.006387,
+        "p99": 0.006497
+      }
+    },
+    "separation_gaps": {
+      "distance_summary": {
+        "count": 10,
+        "min": -0.000829,
+        "max": 0.002148,
+        "mean": 0.000574,
+        "std": 0.000975,
+        "median": 0.000268,
+        "p01": -0.000801,
+        "p05": -0.000689,
+        "p10": -0.000549,
+        "p25": -3e-05,
+        "p75": 0.001464,
+        "p90": 0.001853,
+        "p95": 0.002,
+        "p99": 0.002118
+      }
+    },
+    "top1_positive_separation_gaps": {
+      "distance_summary": {
+        "count": 6,
+        "min": 1.9e-05,
+        "max": 0.002148,
+        "mean": 0.001191,
+        "std": 0.000746,
+        "median": 0.001321,
+        "p01": 4.4e-05,
+        "p05": 0.000144,
+        "p10": 0.000268,
+        "p25": 0.000647,
+        "p75": 0.001767,
+        "p90": 0.001984,
+        "p95": 0.002066,
+        "p99": 0.002131
+      }
+    },
+    "current_policy_probe_outcomes": {
+      "match_distance_summary": {
+        "count": 5,
+        "min": 0.002183,
+        "max": 0.003576,
+        "mean": 0.002937,
+        "std": 0.000469,
+        "median": 0.002885,
+        "p01": 0.002208,
+        "p05": 0.002304,
+        "p10": 0.002425,
+        "p25": 0.002788,
+        "p75": 0.003252,
+        "p90": 0.003446,
+        "p95": 0.003511,
+        "p99": 0.003563
+      },
+      "possible_match_distance_summary": {
+        "count": 4,
+        "min": 0.004306,
+        "max": 0.006547,
+        "mean": 0.005166,
+        "std": 0.000845,
+        "median": 0.004906,
+        "p01": 0.004318,
+        "p05": 0.004366,
+        "p10": 0.004427,
+        "p25": 0.00461,
+        "p75": 0.005462,
+        "p90": 0.006113,
+        "p95": 0.00633,
+        "p99": 0.006504
+      }
+    },
+    "ranking": {
+      "own_template_top1_count": 6,
+      "own_template_not_top1_count": 4,
+      "own_template_top1_rate": 0.6,
+      "own_template_rank_histogram": {
+        "1": 6,
+        "2": 2,
+        "3": 2
+      }
+    },
+    "threshold_report": {
+      "current_threshold": {
+        "threshold": 0.003579,
+        "true_accepts": 5,
+        "false_rejects": 5,
+        "false_accepts": 0,
+        "true_rejects": 10,
+        "tar": 0.5,
+        "frr": 0.5,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.75
+      },
+      "scanned_threshold_count": 200,
+      "recommended": {
+        "best_balanced_accuracy": {
+          "threshold": 0.003579,
+          "true_accepts": 5,
+          "false_rejects": 5,
+          "false_accepts": 0,
+          "true_rejects": 10,
+          "tar": 0.5,
+          "frr": 0.5,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.75
+        },
+        "far_le_0.001": {
+          "threshold": 0.003579,
+          "true_accepts": 5,
+          "false_rejects": 5,
+          "false_accepts": 0,
+          "true_rejects": 10,
+          "tar": 0.5,
+          "frr": 0.5,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.75
+        },
+        "far_le_0.010": {
+          "threshold": 0.003579,
+          "true_accepts": 5,
+          "false_rejects": 5,
+          "false_accepts": 0,
+          "true_rejects": 10,
+          "tar": 0.5,
+          "frr": 0.5,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.75
+        },
+        "far_le_0.050": {
+          "threshold": 0.003579,
+          "true_accepts": 5,
+          "false_rejects": 5,
+          "false_accepts": 0,
+          "true_rejects": 10,
+          "tar": 0.5,
+          "frr": 0.5,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.75
+        },
+        "far_le_0.100": {
+          "threshold": 0.003579,
+          "true_accepts": 5,
+          "false_rejects": 5,
+          "false_accepts": 0,
+          "true_rejects": 10,
+          "tar": 0.5,
+          "frr": 0.5,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.75
+        }
+      }
+    },
+    "recommended_policy": {
+      "match_threshold": 0.003579,
+      "possible_match_threshold": 0.00665,
+      "match_separation_margin": 0.000268,
+      "possible_match_separation_margin": 0.000144,
+      "match_threshold_source": "far_le_0.010",
+      "possible_match_threshold_source": "positive_probe_p95",
+      "gap_summary": {
+        "count": 6,
+        "min": 1.9e-05,
+        "max": 0.002148,
+        "mean": 0.001191,
+        "std": 0.000746,
+        "median": 0.001321,
+        "p01": 4.4e-05,
+        "p05": 0.000144,
+        "p10": 0.000268,
+        "p25": 0.000647,
+        "p75": 0.001767,
+        "p90": 0.001984,
+        "p95": 0.002066,
+        "p99": 0.002131
+      },
+      "positive_probe_summary": {
+        "count": 10,
+        "min": 0.002183,
+        "max": 0.006735,
+        "mean": 0.004208,
+        "std": 0.001486,
+        "median": 0.003941,
+        "p01": 0.002238,
+        "p05": 0.002455,
+        "p10": 0.002727,
+        "p25": 0.002976,
+        "p75": 0.005003,
+        "p90": 0.006566,
+        "p95": 0.00665,
+        "p99": 0.006718
+      }
+    }
+  }
+}
