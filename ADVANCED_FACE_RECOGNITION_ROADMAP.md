@@ -22,14 +22,35 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 
 | Milestone | Focus | Outcome | Status |
 |---|---|---|---|
-| M0 | Diagnostics and evaluation | We can explain why a recognition result happened | In progress |
-| M1 | Enrollment quality gate | Bad face data is blocked before it enters the system | In progress |
-| M2 | Identity template modeling | Each criminal is represented as a stable multi-image identity profile | In progress |
-| M3 | Recognition decision engine | Match decisions are calibrated and tiered | Completed |
+| M0 | Diagnostics and evaluation | We can explain why a recognition result happened | Completed |
+| M1 | Enrollment quality gate | Bad face data is blocked before it enters the system | Completed |
 | M4 | Duplicate-person detection | Same person across multiple criminal records is flagged | In progress |
-| M5 | Frontend review and operator workflow | Operators can review, inspect, and correct recognition behavior | Not started |
-| M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Not started |
+| M2 | Identity template modeling | Each criminal is represented as a stable multi-image identity profile | Completed |
+| M3 | Recognition decision engine | Match decisions are calibrated and tiered | Completed |
+| M5 | Frontend review and operator workflow | Operators can review, inspect, and correct recognition behavior | Completed |
+| M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Partial |
 | M7 | Model upgrade path | The system can be retrained, re-embedded, and rolled forward safely | Not started |
+
+## Current Execution Order
+
+This is the active implementation order and current status for the repo:
+
+1. `M0 diagnostics and evaluation`
+   Status: `Completed`
+2. `M1 enrollment quality gate`
+   Status: `Completed`
+3. `M4 duplicate-person detection`
+   Status: `In progress`
+4. `M2 identity template modeling`
+   Status: `Completed`
+5. `M3 recognition decision engine`
+   Status: `Completed`
+6. `M5 frontend review workflow`
+   Status: `Completed`
+7. `M6 benchmark governance`
+   Status: `Partial`
+8. `M7 model upgrade path`
+   Status: `Not started`
 
 ## M0. Diagnostics And Evaluation
 
@@ -203,6 +224,7 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 - [x] Probable duplicate enrollments are blocked with a `409` response and an attached review-case ID.
 - [x] Lower-confidence duplicate risks are accepted with a stored review case for operator follow-up.
 - [x] Added backend endpoints to list and resolve duplicate review cases.
+- [x] Added operator-triggered criminal merge workflow from duplicate review cases, including linked-record reassignment.
 
 ### Deliverables
 - Detect likely duplicate identities across different criminal records.
@@ -232,6 +254,13 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 - We can export a list of likely duplicate criminal identities.
 
 ## M5. Frontend Review And Operator Workflow
+
+### Progress
+- [x] Detection-box overlay on the Identify page.
+- [x] Structured candidate review table with raw distances and direct profile links.
+- [x] Criminal face timeline now shows template membership and outlier status without database inspection.
+- [x] Added explicit operator actions for "mark enrollment as bad" and "recompute template" on the criminal face timeline.
+- [x] Added an explicit "merge review needed" escalation action from the recognition review UI.
 
 ### Deliverables
 - Show detection boxes on the Identify page.

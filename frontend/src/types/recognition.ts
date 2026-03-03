@@ -27,6 +27,13 @@ export interface RecognitionResult {
     criminal?: RecognitionCriminalSummary | null;
 }
 
+export interface RecognitionOverlayFace {
+    box: [number, number, number, number];
+    status: RecognitionResult['status'];
+    label: string;
+    selected?: boolean;
+}
+
 export interface RecognitionDebugFace {
     box: [number, number, number, number];
     area: number;

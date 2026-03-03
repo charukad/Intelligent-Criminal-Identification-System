@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Loader2, ShieldAlert } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 import { RoleGuard } from '@/components/common/RoleGuard';
 import { DuplicateIdentityReviewCard } from '@/components/review/DuplicateIdentityReviewCard';
@@ -24,6 +26,12 @@ function getRiskSummary(casesCount: number, probableCount: number) {
 
 export default function ReviewQueue() {
     const queryClient = useQueryClient();
+    const [searchParams] = useSearchParams();
+    const focusedReviewCaseId = searchParams.get('case');
+    const [actionNotice, setActionNotice] = useState<{
+        tone: 'success' | 'warning' | 'error';
+        message: string;
+    } | null>(null);
 
     const { data: reviewCases = [], isLoading, error } = useQuery({
         queryKey: ['duplicateReviewCases', OPEN_STATUS],
@@ -43,7 +51,75 @@ export default function ReviewQueue() {
         },
     });
 
+    const mergeMutation = useMutation({
+        mutationFn: ({
+            reviewCaseId,
+            survivorCriminalId,
+        }: {
+            reviewCaseId: string;
+            survivorCriminalId: string;
+        }) =>
+            reviewCasesApi.mergeDuplicateIdentityCase(reviewCaseId, {
+                survivor_criminal_id: survivorCriminalId,
+                resolution_notes: 'Merged from duplicate review queue.',
+            }),
+        onSuccess: (result) => {
+            setActionNotice({
+                tone: 'success',
+                message:
+                    `Merged duplicate record into ${result.survivor_name}. ` +
+                    `${result.moved_face_count} face(s), ${result.moved_offense_count} offense(s), ` +
+                    `${result.moved_alert_count} alert(s), and ${result.moved_audit_count} audit log(s) were reassigned.`,
+            });
+            queryClient.invalidateQueries({ queryKey: ['duplicateReviewCases'] });
+            queryClient.invalidateQueries({ queryKey: ['criminals'] });
+        },
+        onError: (error: any) => {
+            setActionNotice({
+                tone: 'error',
+                message: error?.response?.data?.detail || 'Failed to merge the selected criminal records.',
+            });
+        },
+    });
+
     const probableCount = reviewCases.filter((reviewCase) => reviewCase.risk_level === 'probable_duplicate').length;
+
+    useEffect(() => {
+        if (!focusedReviewCaseId || reviewCases.length === 0) {
+            return;
+        }
+
+        const element = document.getElementById(`review-case-${focusedReviewCaseId}`);
+        if (!element) {
+            return;
+        }
+
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, [focusedReviewCaseId, reviewCases]);
+
+    const handleMerge = (reviewCase: (typeof reviewCases)[number], survivorCriminalId: string) => {
+        const survivorName =
+            survivorCriminalId === reviewCase.source_criminal.id
+                ? reviewCase.source_criminal.name
+                : reviewCase.matched_criminal.name;
+        const mergedName =
+            survivorCriminalId === reviewCase.source_criminal.id
+                ? reviewCase.matched_criminal.name
+                : reviewCase.source_criminal.name;
+
+        const confirmed = window.confirm(
+            `Merge ${mergedName} into ${survivorName}? This will move faces and linked records into the kept profile.`,
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        setActionNotice(null);
+        mergeMutation.mutate({
+            reviewCaseId: reviewCase.id,
+            survivorCriminalId,
+        });
+    };
 
     return (
         <RoleGuard
@@ -88,6 +164,19 @@ export default function ReviewQueue() {
                         <CardDescription>{getRiskSummary(reviewCases.length, probableCount)}</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {actionNotice ? (
+                            <div
+                                className={
+                                    actionNotice.tone === 'success'
+                                        ? 'mb-4 rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-4 text-sm text-emerald-300'
+                                        : actionNotice.tone === 'warning'
+                                            ? 'mb-4 rounded-lg border border-amber-900/50 bg-amber-950/20 p-4 text-sm text-amber-300'
+                                            : 'mb-4 rounded-lg border border-red-900/50 bg-red-950/20 p-4 text-sm text-red-300'
+                                }
+                            >
+                                {actionNotice.message}
+                            </div>
+                        ) : null}
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center gap-3 py-12 text-zinc-400">
                                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -113,10 +202,12 @@ export default function ReviewQueue() {
                                     <DuplicateIdentityReviewCard
                                         key={reviewCase.id}
                                         reviewCase={reviewCase}
-                                        isResolving={resolveMutation.isPending}
+                                        isResolving={resolveMutation.isPending || mergeMutation.isPending}
+                                        highlighted={reviewCase.id === focusedReviewCaseId}
                                         onResolve={(reviewCaseId, status) =>
                                             resolveMutation.mutate({ reviewCaseId, status })
                                         }
+                                        onMerge={handleMerge}
                                     />
                                 ))}
                             </div>

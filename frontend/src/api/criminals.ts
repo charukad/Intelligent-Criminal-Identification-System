@@ -1,5 +1,11 @@
 import { api } from './client';
-import type { Criminal, CriminalFace, FaceQualityPreview } from '@/types/criminal';
+import type {
+    Criminal,
+    CriminalFace,
+    CriminalFaceReviewActionResponse,
+    CriminalTemplateRebuildResponse,
+    FaceQualityPreview,
+} from '@/types/criminal';
 import type { DuplicateReviewSummary } from '@/types/review';
 
 export interface CriminalsListParams {
@@ -143,6 +149,28 @@ export const criminalsApi = {
 
     setPrimaryFace: async (criminalId: string, faceId: string): Promise<void> => {
         await api.post(`/criminals/${criminalId}/faces/${faceId}/primary`);
+    },
+
+    markFaceAsBad: async (
+        criminalId: string,
+        faceId: string,
+        notes?: string,
+    ): Promise<CriminalFaceReviewActionResponse> => {
+        const formData = new FormData();
+        if (notes) {
+            formData.append('notes', notes);
+        }
+        const { data } = await api.post(`/criminals/${criminalId}/faces/${faceId}/mark-bad`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return data;
+    },
+
+    recomputeTemplate: async (criminalId: string): Promise<CriminalTemplateRebuildResponse> => {
+        const { data } = await api.post(`/criminals/${criminalId}/template/recompute`);
+        return data;
     },
 
     // Delete criminal

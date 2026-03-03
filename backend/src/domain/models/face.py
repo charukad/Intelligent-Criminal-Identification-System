@@ -20,6 +20,9 @@ class FaceEmbeddingBase(SQLModel):
     face_area_ratio: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
     pose_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
     occlusion_score: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    exclude_from_template: bool = False
+    operator_review_status: str = Field(default="normal")
+    operator_review_notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     template_role: str = Field(default="archived")
     template_distance: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
     quality_warnings: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))

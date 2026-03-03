@@ -123,6 +123,9 @@ async def test_enroll_face_success(mock_cvtColor, mock_imdecode, monkeypatch, tm
     assert result["created_at"] == created_face.created_at
     assert result["criminal_id"] == criminal_id
     assert result["box"] == (10, 20, 40, 50)
+    assert result["exclude_from_template"] is False
+    assert result["operator_review_status"] == "normal"
+    assert result["operator_review_notes"] is None
     assert result["template_role"] == "archived"
     assert result["template_distance"] is None
     assert result["quality"] == {
@@ -350,6 +353,89 @@ async def test_enroll_face_returns_duplicate_review_for_needs_review(mock_cvtCol
 
 
 @pytest.mark.asyncio
+async def test_mark_face_as_bad_excludes_it_and_promotes_replacement():
+    criminal_id = uuid4()
+    user_id = uuid4()
+    face_id = uuid4()
+    replacement_id = uuid4()
+
+    face = SimpleNamespace(
+        id=face_id,
+        criminal_id=criminal_id,
+        image_url="uploads/faces/bad.png",
+        is_primary=True,
+        exclude_from_template=False,
+        operator_review_status="normal",
+        operator_review_notes=None,
+        embedding_version="tracenet_v1",
+        created_at=datetime.now(timezone.utc),
+        box_x=1,
+        box_y=2,
+        box_w=3,
+        box_h=4,
+        quality_status="accepted",
+        quality_score=90.0,
+        blur_score=90.0,
+        brightness_score=130.0,
+        face_area_ratio=0.2,
+        pose_score=100.0,
+        occlusion_score=100.0,
+        quality_warnings=None,
+        template_role="primary",
+        template_distance=0.0012,
+    )
+    refreshed_face = SimpleNamespace(
+        **{
+            **face.__dict__,
+            "is_primary": False,
+            "exclude_from_template": True,
+            "operator_review_status": "marked_bad",
+            "operator_review_notes": "Background obstruction",
+            "template_role": "archived",
+            "template_distance": None,
+        }
+    )
+    replacement_face = SimpleNamespace(id=replacement_id)
+
+    face_repo = AsyncMock()
+    face_repo.get.side_effect = [face, refreshed_face]
+    face_repo.update.return_value = refreshed_face
+    face_repo.get_template_eligible_face_for_promotion.return_value = replacement_face
+    criminal_repo = AsyncMock()
+    criminal_repo.get.return_value = SimpleNamespace(id=criminal_id)
+    audit_repo = AsyncMock()
+    template_service = AsyncMock()
+
+    service = FaceEnrollmentService(
+        pipeline=MagicMock(),
+        face_repo=face_repo,
+        criminal_repo=criminal_repo,
+        audit_repo=audit_repo,
+        template_service=template_service,
+    )
+
+    result = await service.mark_face_as_bad(
+        criminal_id=criminal_id,
+        face_id=face_id,
+        user_id=user_id,
+        notes="Background obstruction",
+    )
+
+    update_payload = face_repo.update.await_args.args[1]
+    assert update_payload["exclude_from_template"] is True
+    assert update_payload["operator_review_status"] == "marked_bad"
+    assert update_payload["operator_review_notes"] == "Background obstruction"
+    assert update_payload["is_primary"] is False
+    face_repo.set_primary.assert_awaited_once_with(replacement_id)
+    template_service.rebuild_for_criminal.assert_awaited_once_with(criminal_id)
+    assert result["promoted_face_id"] == str(replacement_id)
+    assert result["face"]["exclude_from_template"] is True
+    assert result["face"]["operator_review_status"] == "marked_bad"
+    assert result["face"]["operator_review_notes"] == "Background obstruction"
+    audit_repo.create.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_enroll_criminal_face_endpoint_returns_service_result(monkeypatch):
     criminals_module = load_criminals_endpoint_module(monkeypatch)
     criminal_id = uuid4()
@@ -362,6 +448,9 @@ async def test_enroll_criminal_face_endpoint_returns_service_result(monkeypatch)
         "embedding_version": "tracenet_v1",
         "created_at": datetime.now(timezone.utc),
         "box": (1, 2, 3, 4),
+        "exclude_from_template": False,
+        "operator_review_status": "normal",
+        "operator_review_notes": None,
         "template_role": "primary",
         "template_distance": 0.0012,
         "quality": {
@@ -493,6 +582,121 @@ async def test_enroll_criminal_face_endpoint_maps_duplicate_conflict(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_mark_bad_face_endpoint_returns_service_result(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    criminal_id = uuid4()
+    face_id = uuid4()
+    current_user = SimpleNamespace(id=uuid4())
+    expected = {
+        "status": "success",
+        "message": "Face enrollment marked as bad and excluded from the active template.",
+        "promoted_face_id": None,
+        "face": {
+            "id": face_id,
+            "criminal_id": criminal_id,
+            "image_url": "uploads/faces/example.png",
+            "is_primary": False,
+            "embedding_version": "tracenet_v1",
+            "created_at": datetime.now(timezone.utc),
+            "box": (1, 2, 3, 4),
+            "exclude_from_template": True,
+            "operator_review_status": "marked_bad",
+            "operator_review_notes": "Blurred crop",
+            "template_role": "archived",
+            "template_distance": None,
+            "quality": {
+                "status": "accepted",
+                "quality_score": 90.0,
+                "blur_score": 120.0,
+                "brightness_score": 130.0,
+                "face_area_ratio": 0.2,
+                "pose_score": 100.0,
+                "occlusion_score": 100.0,
+                "warnings": [],
+            },
+        },
+    }
+
+    class FakeService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def mark_face_as_bad(self, **kwargs):
+            assert kwargs["criminal_id"] == criminal_id
+            assert kwargs["face_id"] == face_id
+            assert kwargs["notes"] == "Blurred crop"
+            assert kwargs["user_id"] == current_user.id
+            return expected
+
+    monkeypatch.setattr(criminals_module, "FaceEnrollmentService", FakeService)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "AuditRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateRepository", lambda _db: object())
+
+    result = await criminals_module.mark_criminal_face_as_bad(
+        criminal_id=criminal_id,
+        face_id=face_id,
+        notes="Blurred crop",
+        current_user=current_user,
+        db=AsyncMock(),
+    )
+
+    assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_recompute_template_endpoint_returns_service_result(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    criminal_id = uuid4()
+    current_user = SimpleNamespace(id=uuid4())
+    expected = {
+        "status": "success",
+        "message": "Identity template rebuilt from the current enrolled faces.",
+        "criminal_id": criminal_id,
+        "template": {
+            "id": uuid4(),
+            "criminal_id": criminal_id,
+            "template_version": "tracenet_template_v1",
+            "embedding_version": "tracenet_v1",
+            "primary_face_id": uuid4(),
+            "included_face_ids": [uuid4()],
+            "support_face_ids": [],
+            "archived_face_ids": [],
+            "outlier_face_ids": [],
+            "active_face_count": 1,
+            "support_face_count": 0,
+            "archived_face_count": 0,
+            "outlier_face_count": 0,
+            "updated_at": datetime.now(timezone.utc),
+        },
+    }
+
+    class FakeService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def recompute_template(self, **kwargs):
+            assert kwargs["criminal_id"] == criminal_id
+            assert kwargs["user_id"] == current_user.id
+            return expected
+
+    monkeypatch.setattr(criminals_module, "FaceEnrollmentService", FakeService)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "AuditRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateRepository", lambda _db: object())
+
+    result = await criminals_module.recompute_criminal_template(
+        criminal_id=criminal_id,
+        current_user=current_user,
+        db=AsyncMock(),
+    )
+
+    assert result == expected
+
+
+@pytest.mark.asyncio
 async def test_list_duplicate_review_cases_endpoint_returns_cases(monkeypatch):
     criminals_module = load_criminals_endpoint_module(monkeypatch)
     review_case = SimpleNamespace(
@@ -542,6 +746,80 @@ async def test_list_duplicate_review_cases_endpoint_returns_cases(monkeypatch):
     assert len(result) == 1
     assert result[0]["source_criminal"]["name"] == "Source Person"
     assert result[0]["matched_criminal"]["primary_face_image_url"] == "uploads/faces/matched.png"
+
+
+@pytest.mark.asyncio
+async def test_create_manual_duplicate_review_case_endpoint_returns_case(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    review_case = SimpleNamespace(
+        id=uuid4(),
+        case_type=ReviewCaseType.DUPLICATE_IDENTITY,
+        status=ReviewCaseStatus.OPEN,
+        risk_level=DuplicateRiskLevel.NEEDS_REVIEW,
+        source_criminal_id=uuid4(),
+        matched_criminal_id=uuid4(),
+        source_face_id=uuid4(),
+        matched_face_id=uuid4(),
+        distance=0.0048,
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+        submitted_filename="identify-upload.png",
+        notes="Manual escalation from recognition review",
+        resolution_notes=None,
+        created_by_id=uuid4(),
+        resolved_by_id=None,
+        created_at=datetime.now(timezone.utc),
+        resolved_at=None,
+    )
+
+    class FakeDuplicateService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def create_manual_review_case(self, **kwargs):
+            assert kwargs["source_criminal_id"] == review_case.source_criminal_id
+            assert kwargs["matched_criminal_id"] == review_case.matched_criminal_id
+            assert kwargs["distance"] == 0.0048
+            return review_case
+
+    criminal_repo = MagicMock()
+    criminal_repo.get = AsyncMock(side_effect=[
+        SimpleNamespace(first_name="Source", last_name="Person"),
+        SimpleNamespace(first_name="Matched", last_name="Person"),
+    ])
+    face_repo = MagicMock()
+    face_repo.get_primary_faces_for_criminals = AsyncMock(side_effect=[
+        [SimpleNamespace(image_url="uploads/faces/source.png")],
+        [SimpleNamespace(image_url="uploads/faces/matched.png")],
+    ])
+
+    monkeypatch.setattr(criminals_module, "DuplicateIdentityService", FakeDuplicateService)
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: criminal_repo)
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: face_repo)
+    monkeypatch.setattr(criminals_module, "ReviewCaseRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateRepository", lambda _db: object())
+
+    payload = criminals_module.ManualDuplicateReviewCaseCreateRequest(
+        source_criminal_id=review_case.source_criminal_id,
+        matched_criminal_id=review_case.matched_criminal_id,
+        source_face_id=review_case.source_face_id,
+        matched_face_id=review_case.matched_face_id,
+        distance=0.0048,
+        embedding_version="tracenet_v1",
+        template_version="tracenet_template_v1",
+        submitted_filename="identify-upload.png",
+        notes="Manual escalation from recognition review",
+    )
+
+    result = await criminals_module.create_manual_duplicate_review_case(
+        review_case_in=payload,
+        current_user=SimpleNamespace(id=uuid4()),
+        db=AsyncMock(),
+    )
+
+    assert result["id"] == review_case.id
+    assert result["source_criminal"]["name"] == "Source Person"
+    assert result["matched_criminal"]["name"] == "Matched Person"
 
 
 @pytest.mark.asyncio
@@ -602,6 +880,54 @@ async def test_resolve_duplicate_review_case_endpoint_returns_resolved_case(monk
 
     assert result["status"] == ReviewCaseStatus.CONFIRMED_DUPLICATE
     assert result["matched_criminal"]["name"] == "Matched Person"
+
+
+@pytest.mark.asyncio
+async def test_merge_duplicate_review_case_endpoint_returns_merge_summary(monkeypatch):
+    criminals_module = load_criminals_endpoint_module(monkeypatch)
+    review_case_id = uuid4()
+    survivor_criminal_id = uuid4()
+
+    class FakeMergeService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def merge_from_review_case(self, **kwargs):
+            assert kwargs["review_case_id"] == review_case_id
+            assert kwargs["survivor_criminal_id"] == survivor_criminal_id
+            return {
+                "status": "success",
+                "review_case_id": str(review_case_id),
+                "survivor_criminal_id": str(survivor_criminal_id),
+                "merged_criminal_id": str(uuid4()),
+                "moved_face_count": 3,
+                "moved_offense_count": 1,
+                "moved_alert_count": 2,
+                "moved_audit_count": 4,
+                "dismissed_review_case_count": 1,
+                "survivor_name": "Survivor Profile",
+            }
+
+    monkeypatch.setattr(criminals_module, "CriminalMergeService", FakeMergeService)
+    monkeypatch.setattr(criminals_module, "CriminalRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "FaceRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "ReviewCaseRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "AuditRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateRepository", lambda _db: object())
+    monkeypatch.setattr(criminals_module, "IdentityTemplateService", lambda *_args, **_kwargs: object())
+
+    result = await criminals_module.merge_duplicate_review_case(
+        review_case_id=review_case_id,
+        merge_in=SimpleNamespace(
+            survivor_criminal_id=survivor_criminal_id,
+            resolution_notes="Merge confirmed",
+        ),
+        current_user=SimpleNamespace(id=uuid4()),
+        db=AsyncMock(),
+    )
+
+    assert result["status"] == "success"
+    assert result["survivor_criminal_id"] == str(survivor_criminal_id)
 
 
 @pytest.mark.asyncio
@@ -728,6 +1054,9 @@ async def test_list_criminal_faces_returns_enrolled_faces(monkeypatch):
             "embedding_version": "tracenet_v1",
             "created_at": datetime(2026, 2, 28, 12, 0, tzinfo=timezone.utc),
             "box": (11, 22, 33, 44),
+            "exclude_from_template": False,
+            "operator_review_status": "normal",
+            "operator_review_notes": None,
             "template_role": "support",
             "template_distance": 0.0026,
             "quality": {

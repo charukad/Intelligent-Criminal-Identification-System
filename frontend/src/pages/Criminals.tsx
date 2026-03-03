@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ChevronLeft, ChevronRight, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, ShieldAlert, ShieldCheck, Trash2, Ban, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoleGuard } from '@/components/common/RoleGuard';
 import { criminalsApi } from '@/api/criminals';
@@ -12,9 +13,12 @@ import type { DuplicateReviewSummary } from '@/types/review';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { CriminalFilters } from '@/components/criminals/CriminalFilters';
 import { CriminalsTable } from '@/components/criminals/CriminalsTable';
 import { CriminalDialog } from '@/components/criminals/CriminalDialog';
+import { FaceOutlierWarning } from '@/components/criminals/FaceOutlierWarning';
+import { FaceTemplateSummary } from '@/components/criminals/FaceTemplateSummary';
 import {
     Dialog,
     DialogContent,
@@ -100,11 +104,20 @@ function buildEnrollmentNotice(
         .map((failure) => `${failure.fileName}: ${failure.detail}`);
 
     const detailParts = [...acceptedWithReview, ...blockedDuplicates, ...genericFailures];
+    const reviewCaseIds = [
+        ...uploaded
+            .map((face) => face.duplicate_review?.review_case_id)
+            .filter((value): value is string => Boolean(value)),
+        ...failed
+            .map((failure) => failure.duplicateReview?.review_case_id)
+            .filter((value): value is string => Boolean(value)),
+    ];
 
     if (detailParts.length === 0) {
         return {
             tone: 'success' as const,
             message: `Criminal profile and ${uploaded.length} face image(s) were enrolled successfully.`,
+            reviewCaseIds: [] as string[],
         };
     }
 
@@ -115,17 +128,17 @@ function buildEnrollmentNotice(
                 ? `Criminal profile created. ${uploaded.length} face image(s) enrolled with review warnings or partial failures. `
                 : 'Criminal profile created, but face enrollment raised duplicate or upload issues. ') +
             detailParts.join(' '),
+        reviewCaseIds: Array.from(new Set(reviewCaseIds)),
     };
 }
 
-function getUploadErrorMessage(error: any) {
+function getUploadErrorDetails(error: any) {
     const detail = error?.response?.data?.detail;
     if (typeof detail === 'string') {
-        return detail;
+        return { message: detail, reviewCaseIds: [] as string[] };
     }
     if (detail?.review_case_id && detail?.conflicting_criminal?.name) {
-        return buildDuplicateReviewMessage(
-            {
+        const summary: DuplicateReviewSummary = {
                 review_case_id: String(detail.review_case_id),
                 risk_level: detail.risk_level,
                 distance: Number(detail.distance ?? 0),
@@ -135,18 +148,24 @@ function getUploadErrorMessage(error: any) {
                     primary_face_image_url: detail.conflicting_criminal.primary_face_image_url ?? null,
                 },
                 status: 'open',
-            },
-        );
+            };
+        return {
+            message: buildDuplicateReviewMessage(summary),
+            reviewCaseIds: [summary.review_case_id],
+        };
     }
     if (detail?.message) {
-        return detail.message;
+        return { message: detail.message, reviewCaseIds: [] as string[] };
     }
-    return 'Failed to upload the face image. Please try again.';
+    return { message: 'Failed to upload the face image. Please try again.', reviewCaseIds: [] as string[] };
 }
 
 export default function Criminals() {
     const queryClient = useQueryClient();
     const { hasRole } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const focusedCriminalId = searchParams.get('criminal');
 
     // State
     const [page, setPage] = useState(1);
@@ -161,10 +180,16 @@ export default function Criminals() {
     const [viewingCriminal, setViewingCriminal] = useState<Criminal | undefined>();
     const [editingCriminal, setEditingCriminal] = useState<Criminal | undefined>();
     const [deletingCriminal, setDeletingCriminal] = useState<Criminal | undefined>();
-    const [actionNotice, setActionNotice] = useState<{ tone: 'success' | 'warning' | 'error'; message: string } | null>(null);
+    const [actionNotice, setActionNotice] = useState<{
+        tone: 'success' | 'warning' | 'error';
+        message: string;
+        reviewCaseIds?: string[];
+    } | null>(null);
     const [existingFaceFile, setExistingFaceFile] = useState<File | null>(null);
     const [existingFacePrimary, setExistingFacePrimary] = useState(true);
     const [deletingFace, setDeletingFace] = useState<CriminalFace | null>(null);
+    const [markingBadFace, setMarkingBadFace] = useState<CriminalFace | null>(null);
+    const [markBadNotes, setMarkBadNotes] = useState('');
 
     // Queries
     const { data, isLoading, error } = useQuery({
@@ -179,6 +204,12 @@ export default function Criminals() {
         queryKey: ['criminalFaces', viewingCriminal?.id],
         queryFn: () => criminalsApi.listFaces(viewingCriminal!.id),
         enabled: Boolean(viewingCriminal?.id),
+    });
+
+    const { data: focusedCriminal } = useQuery({
+        queryKey: ['criminal', focusedCriminalId],
+        queryFn: () => criminalsApi.getById(focusedCriminalId!),
+        enabled: Boolean(focusedCriminalId),
     });
 
     // Mutations
@@ -217,6 +248,15 @@ export default function Criminals() {
     const setPrimaryFaceMutation = useMutation({
         mutationFn: ({ criminalId, faceId }: { criminalId: string; faceId: string }) =>
             criminalsApi.setPrimaryFace(criminalId, faceId),
+    });
+
+    const markBadFaceMutation = useMutation({
+        mutationFn: ({ criminalId, faceId, notes }: { criminalId: string; faceId: string; notes?: string }) =>
+            criminalsApi.markFaceAsBad(criminalId, faceId, notes),
+    });
+
+    const recomputeTemplateMutation = useMutation({
+        mutationFn: (criminalId: string) => criminalsApi.recomputeTemplate(criminalId),
     });
 
     const updateMutation = useMutation({
@@ -290,9 +330,11 @@ export default function Criminals() {
                         });
                         setActionNotice(buildEnrollmentNotice(enrollmentResult.uploaded, enrollmentResult.failed));
                     } catch (uploadError: any) {
+                        const uploadErrorDetails = getUploadErrorDetails(uploadError);
                         setActionNotice({
                             tone: 'warning',
-                            message: getUploadErrorMessage(uploadError),
+                            message: uploadErrorDetails.message,
+                            reviewCaseIds: uploadErrorDetails.reviewCaseIds,
                         });
                     }
                 } else {
@@ -362,17 +404,21 @@ export default function Criminals() {
                     message:
                         'Face image uploaded, but the system flagged a duplicate review. ' +
                         buildDuplicateReviewMessage(enrolledFace.duplicate_review, currentFileName),
+                    reviewCaseIds: [enrolledFace.duplicate_review.review_case_id],
                 });
             } else {
                 setActionNotice({
                     tone: 'success',
                     message: 'Face image uploaded for the selected criminal.',
+                    reviewCaseIds: [],
                 });
             }
         } catch (uploadError: any) {
+            const uploadErrorDetails = getUploadErrorDetails(uploadError);
             setActionNotice({
                 tone: uploadError?.response?.status === 409 ? 'warning' : 'error',
-                message: getUploadErrorMessage(uploadError),
+                message: uploadErrorDetails.message,
+                reviewCaseIds: uploadErrorDetails.reviewCaseIds,
             });
         }
     };
@@ -405,7 +451,7 @@ export default function Criminals() {
     };
 
     const handleSetPrimaryFace = async (face: CriminalFace) => {
-        if (!viewingCriminal || face.is_primary) {
+        if (!viewingCriminal || face.is_primary || face.exclude_from_template) {
             return;
         }
 
@@ -430,6 +476,69 @@ export default function Criminals() {
         }
     };
 
+    const handleConfirmMarkFaceAsBad = async () => {
+        if (!viewingCriminal || !markingBadFace) {
+            return;
+        }
+
+        setActionNotice(null);
+        try {
+            const result = await markBadFaceMutation.mutateAsync({
+                criminalId: viewingCriminal.id,
+                faceId: markingBadFace.id,
+                notes: markBadNotes.trim() || undefined,
+            });
+            await queryClient.invalidateQueries({ queryKey: ['criminalFaces', viewingCriminal.id] });
+            await queryClient.invalidateQueries({ queryKey: ['criminals'] });
+            await queryClient.invalidateQueries({ queryKey: ['criminal', viewingCriminal.id] });
+            setMarkingBadFace(null);
+            setMarkBadNotes('');
+            setActionNotice({
+                tone: 'warning',
+                message:
+                    result.message +
+                    (result.promoted_face_id
+                        ? ' Another eligible face was promoted as primary.'
+                        : ' No replacement primary face was available.'),
+            });
+        } catch (markBadError: any) {
+            setActionNotice({
+                tone: 'error',
+                message:
+                    markBadError?.response?.data?.detail ||
+                    'Failed to mark the selected enrollment as bad.',
+            });
+        }
+    };
+
+    const handleRecomputeTemplate = async () => {
+        if (!viewingCriminal) {
+            return;
+        }
+
+        setActionNotice(null);
+        try {
+            const result = await recomputeTemplateMutation.mutateAsync(viewingCriminal.id);
+            await queryClient.invalidateQueries({ queryKey: ['criminalFaces', viewingCriminal.id] });
+            await queryClient.invalidateQueries({ queryKey: ['criminals'] });
+            await queryClient.invalidateQueries({ queryKey: ['criminal', viewingCriminal.id] });
+            const template = result.template;
+            setActionNotice({
+                tone: 'success',
+                message: template
+                    ? `${result.message} Active ${template.active_face_count}, support ${template.support_face_count}, outlier ${template.outlier_face_count}.`
+                    : `${result.message} No active template could be built from the current enrolled faces.`,
+            });
+        } catch (recomputeError: any) {
+            setActionNotice({
+                tone: 'error',
+                message:
+                    recomputeError?.response?.data?.detail ||
+                    'Failed to rebuild the identity template.',
+            });
+        }
+    };
+
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
         setFilters((prev) => ({ ...prev, page: newPage }));
@@ -440,8 +549,28 @@ export default function Criminals() {
             setExistingFaceFile(null);
             setExistingFacePrimary(true);
             setDeletingFace(null);
+            setMarkingBadFace(null);
+            setMarkBadNotes('');
         }
     }, [viewingCriminal]);
+
+    useEffect(() => {
+        if (!focusedCriminal || viewingCriminal?.id === focusedCriminal.id) {
+            return;
+        }
+
+        setViewingCriminal(focusedCriminal);
+    }, [focusedCriminal, viewingCriminal]);
+
+    const clearFocusedCriminalParam = () => {
+        if (!focusedCriminalId) {
+            return;
+        }
+
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('criminal');
+        setSearchParams(nextParams, { replace: true });
+    };
 
     return (
         <div className="space-y-6 p-6">
@@ -493,17 +622,31 @@ export default function Criminals() {
                                 : 'border-red-900/50 bg-red-950/20 p-4'
                     }
                 >
-                    <p
-                        className={
-                            actionNotice.tone === 'success'
-                                ? 'text-sm text-emerald-300'
-                                : actionNotice.tone === 'warning'
-                                    ? 'text-sm text-amber-300'
-                                    : 'text-sm text-red-400'
-                        }
-                    >
-                        {actionNotice.message}
-                    </p>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <p
+                            className={
+                                actionNotice.tone === 'success'
+                                    ? 'text-sm text-emerald-300'
+                                    : actionNotice.tone === 'warning'
+                                        ? 'text-sm text-amber-300'
+                                        : 'text-sm text-red-400'
+                            }
+                        >
+                            {actionNotice.message}
+                        </p>
+                        {hasRole(['admin', 'senior_officer']) && actionNotice.reviewCaseIds && actionNotice.reviewCaseIds.length > 0 ? (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-zinc-700"
+                                onClick={() =>
+                                    navigate(`/dashboard/review-queue?case=${actionNotice.reviewCaseIds?.[0]}`)
+                                }
+                            >
+                                Open Review Queue
+                            </Button>
+                        ) : null}
+                    </div>
                 </Card>
             )}
 
@@ -634,7 +777,12 @@ export default function Criminals() {
             {/* View Details Dialog */}
             <Dialog
                 open={!!viewingCriminal}
-                onOpenChange={(open) => !open && setViewingCriminal(undefined)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setViewingCriminal(undefined);
+                        clearFocusedCriminalParam();
+                    }
+                }}
             >
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
@@ -680,11 +828,26 @@ export default function Criminals() {
                             </div>
 
                             <div className="space-y-4 border-t border-zinc-800 pt-4">
-                                <div>
-                                    <p className="text-sm font-semibold text-white">Enrolled Face Images</p>
-                                    <p className="text-xs text-zinc-500">
-                                        Stored mugshots and their embedding metadata used by the recognition pipeline.
-                                    </p>
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-white">Enrolled Face Images</p>
+                                        <p className="text-xs text-zinc-500">
+                                            Stored mugshots and their embedding metadata used by the recognition pipeline.
+                                        </p>
+                                    </div>
+                                    {hasRole(['admin', 'senior_officer', 'field_officer']) && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-zinc-700"
+                                            onClick={handleRecomputeTemplate}
+                                            disabled={recomputeTemplateMutation.isPending}
+                                        >
+                                            <RefreshCw className={`mr-2 h-4 w-4 ${recomputeTemplateMutation.isPending ? 'animate-spin' : ''}`} />
+                                            Recompute Template
+                                        </Button>
+                                    )}
                                 </div>
 
                                 {isLoadingFaces ? (
@@ -747,6 +910,9 @@ export default function Criminals() {
                                                                     Face ID: <span className="font-mono text-zinc-400">{face.id}</span>
                                                                 </p>
                                                             </div>
+
+                                                            <FaceTemplateSummary face={face} />
+                                                            <FaceOutlierWarning face={face} />
 
                                                             <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                                                                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -835,9 +1001,25 @@ export default function Criminals() {
                                                                             size="sm"
                                                                             className="border-zinc-700 text-zinc-200"
                                                                             onClick={() => handleSetPrimaryFace(face)}
-                                                                            disabled={setPrimaryFaceMutation.isPending}
+                                                                            disabled={setPrimaryFaceMutation.isPending || face.exclude_from_template}
                                                                         >
                                                                             Set Primary
+                                                                        </Button>
+                                                                    )}
+                                                                    {!face.exclude_from_template && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30"
+                                                                            onClick={() => {
+                                                                                setMarkingBadFace(face);
+                                                                                setMarkBadNotes(face.operator_review_notes || '');
+                                                                            }}
+                                                                            disabled={markBadFaceMutation.isPending}
+                                                                        >
+                                                                            <Ban className="mr-2 h-4 w-4" />
+                                                                            Mark Bad
                                                                         </Button>
                                                                     )}
                                                                     <Button
@@ -925,6 +1107,64 @@ export default function Criminals() {
                             disabled={deleteFaceMutation.isPending || setPrimaryFaceMutation.isPending}
                         >
                             {deleteFaceMutation.isPending ? 'Deleting...' : 'Delete Face'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={!!markingBadFace}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setMarkingBadFace(null);
+                        setMarkBadNotes('');
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Mark Face Enrollment As Bad</DialogTitle>
+                        <DialogDescription>
+                            Exclude this enrolled face from future identity-template rebuilds. The face record stays on the profile for audit history, but it will no longer be used for matching.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <p className="text-sm text-zinc-300">
+                            {markingBadFace?.is_primary
+                                ? 'This face is currently primary. If another eligible face exists, it will be promoted automatically.'
+                                : 'This face is not primary and will simply be excluded from the template.'}
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                                Operator Notes
+                            </label>
+                            <Input
+                                value={markBadNotes}
+                                onChange={(event) => setMarkBadNotes(event.target.value)}
+                                placeholder="Optional note, e.g. wrong person or blurred crop"
+                                className="border-zinc-700 bg-zinc-950"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setMarkingBadFace(null);
+                                setMarkBadNotes('');
+                            }}
+                            disabled={markBadFaceMutation.isPending}
+                            className="border-zinc-700"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmMarkFaceAsBad}
+                            disabled={markBadFaceMutation.isPending}
+                            className="bg-amber-600 text-black hover:bg-amber-500"
+                        >
+                            {markBadFaceMutation.isPending ? 'Saving...' : 'Mark As Bad'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

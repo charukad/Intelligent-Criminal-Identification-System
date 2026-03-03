@@ -1,5 +1,7 @@
 import type { DuplicateReviewSummary } from '@/types/review';
 
+export type FaceTemplateRole = 'primary' | 'support' | 'archived' | 'outlier' | (string & {});
+
 export interface Criminal {
     id: string;
     first_name: string;
@@ -24,7 +26,10 @@ export interface CriminalFace {
     embedding_version: string;
     created_at: string;
     box: [number, number, number, number];
-    template_role: string;
+    exclude_from_template: boolean;
+    operator_review_status: string;
+    operator_review_notes?: string | null;
+    template_role: FaceTemplateRole;
     template_distance?: number | null;
     quality: FaceQuality;
     duplicate_review?: DuplicateReviewSummary | null;
@@ -48,6 +53,37 @@ export interface FaceQualityPreview {
     message: string;
     box?: [number, number, number, number] | null;
     quality?: FaceQuality | null;
+}
+
+export interface CriminalFaceReviewActionResponse {
+    status: string;
+    message: string;
+    promoted_face_id?: string | null;
+    face: CriminalFace;
+}
+
+export interface CriminalTemplateRebuild {
+    id: string;
+    criminal_id: string;
+    template_version: string;
+    embedding_version: string;
+    primary_face_id?: string | null;
+    included_face_ids: string[];
+    support_face_ids: string[];
+    archived_face_ids: string[];
+    outlier_face_ids: string[];
+    active_face_count: number;
+    support_face_count: number;
+    archived_face_count: number;
+    outlier_face_count: number;
+    updated_at: string;
+}
+
+export interface CriminalTemplateRebuildResponse {
+    status: string;
+    message: string;
+    criminal_id: string;
+    template?: CriminalTemplateRebuild | null;
 }
 
 export interface CriminalFormData {

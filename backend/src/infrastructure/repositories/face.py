@@ -82,3 +82,19 @@ class FaceRepository(BaseRepository[FaceEmbedding]):
             await self.session.execute(statement)
 
         await self.session.commit()
+
+    async def get_template_eligible_face_for_promotion(
+        self,
+        criminal_id: UUID,
+        exclude_face_id: UUID | None = None,
+    ) -> FaceEmbedding | None:
+        faces = await self.list_by_criminal(criminal_id)
+        for face in faces:
+            if exclude_face_id is not None and face.id == exclude_face_id:
+                continue
+            if getattr(face, "quality_status", "accepted") == "rejected":
+                continue
+            if bool(getattr(face, "exclude_from_template", False)):
+                continue
+            return face
+        return None

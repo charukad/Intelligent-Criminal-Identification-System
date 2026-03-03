@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { RecognitionCandidateTable } from '@/components/recognition/RecognitionCandidateTable';
 import type { RecognitionDebug } from '@/types/recognition';
 
 interface RecognitionDebugPanelProps {
@@ -106,43 +107,11 @@ export function RecognitionDebugPanel({ debug }: RecognitionDebugPanelProps) {
                                 </div>
 
                                 <div className="mt-4 space-y-2">
-                                    <p className="text-xs uppercase tracking-wide text-zinc-500">Top Candidates</p>
-                                    {face.top_candidates.length === 0 ? (
-                                        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 p-3 text-sm text-zinc-500">
-                                            No enriched candidate list available for this face.
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {face.top_candidates.map((candidate, candidateIndex) => (
-                                                <div
-                                                    key={`${candidate.face_id}-${candidateIndex}`}
-                                                    className="grid gap-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-3 text-sm text-zinc-300 md:grid-cols-[minmax(0,1fr)_auto_auto]"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <p className="truncate font-medium text-zinc-100">
-                                                            #{candidateIndex + 1} {candidate.criminal.name}
-                                                        </p>
-                                                        <p className="truncate text-xs text-zinc-500">
-                                                            {candidate.criminal.nic || 'No NIC'} · {candidate.criminal.threat_level || 'Unknown threat'}
-                                                        </p>
-                                                    </div>
-                                                    <div className="text-xs text-zinc-400">
-                                                        <p className="font-mono text-zinc-200">{formatDistance(candidate.distance)}</p>
-                                                        <p>{candidate.embedding_version}</p>
-                                                        <p>{candidate.template_version}</p>
-                                                        <p>
-                                                            {candidate.active_face_count} active · {candidate.support_face_count} support · {candidate.outlier_face_count} outlier
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center justify-start md:justify-end">
-                                                        <Badge variant={candidate.is_primary ? 'success' : 'outline'}>
-                                                            {candidate.is_primary ? 'Primary face' : 'Support face'}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <RecognitionCandidateTable
+                                        candidates={face.top_candidates}
+                                        title="Top Candidates"
+                                        emptyMessage="No enriched candidate list available for this face."
+                                    />
                                 </div>
                             </div>
                         ))}

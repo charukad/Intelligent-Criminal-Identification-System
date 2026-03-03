@@ -45,3 +45,33 @@ class ReviewCaseResponse(BaseModel):
 class ReviewCaseResolveRequest(BaseModel):
     status: ReviewCaseStatus
     resolution_notes: Optional[str] = None
+
+
+class ReviewCaseMergeRequest(BaseModel):
+    survivor_criminal_id: UUID
+    resolution_notes: Optional[str] = None
+
+
+class ManualDuplicateReviewCaseCreateRequest(BaseModel):
+    source_criminal_id: UUID
+    matched_criminal_id: UUID
+    source_face_id: Optional[UUID] = None
+    matched_face_id: Optional[UUID] = None
+    distance: float = 0.0
+    embedding_version: str = "tracenet_v1"
+    template_version: Optional[str] = None
+    submitted_filename: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ReviewCaseMergeResponse(BaseModel):
+    status: str
+    review_case_id: str
+    survivor_criminal_id: str
+    merged_criminal_id: str
+    moved_face_count: int
+    moved_offense_count: int
+    moved_alert_count: int
+    moved_audit_count: int
+    dismissed_review_case_count: int
+    survivor_name: str

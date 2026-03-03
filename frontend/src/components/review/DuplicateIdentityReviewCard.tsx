@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, CheckCircle2, FolderX, GitPullRequest, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, CheckCircle2, FolderX, GitPullRequest, XCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,9 @@ import type { ReviewCase } from '@/types/review';
 interface DuplicateIdentityReviewCardProps {
     reviewCase: ReviewCase;
     isResolving?: boolean;
+    highlighted?: boolean;
     onResolve: (reviewCaseId: string, status: 'confirmed_duplicate' | 'false_positive' | 'dismissed') => void;
+    onMerge: (reviewCase: ReviewCase, survivorCriminalId: string) => void;
 }
 
 function getRiskBadge(riskLevel: ReviewCase['risk_level']) {
@@ -31,12 +34,21 @@ function getRiskBadge(riskLevel: ReviewCase['risk_level']) {
 export function DuplicateIdentityReviewCard({
     reviewCase,
     isResolving = false,
+    highlighted = false,
     onResolve,
+    onMerge,
 }: DuplicateIdentityReviewCardProps) {
     const riskBadge = getRiskBadge(reviewCase.risk_level);
 
     return (
-        <Card className="border-zinc-800 bg-zinc-950/60">
+        <Card
+            id={`review-case-${reviewCase.id}`}
+            className={
+                highlighted
+                    ? 'border-amber-500/70 bg-amber-950/20 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]'
+                    : 'border-zinc-800 bg-zinc-950/60'
+            }
+        >
             <CardHeader className="space-y-3">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
@@ -47,6 +59,7 @@ export function DuplicateIdentityReviewCard({
                             </Badge>
                             <Badge variant="outline">Distance {reviewCase.distance.toFixed(6)}</Badge>
                             <Badge variant="secondary">{reviewCase.embedding_version}</Badge>
+                            {highlighted ? <Badge variant="info">Focused Case</Badge> : null}
                         </div>
                         <CardTitle className="text-xl text-white">
                             {reviewCase.source_criminal.name} vs {reviewCase.matched_criminal.name}
@@ -74,11 +87,21 @@ export function DuplicateIdentityReviewCard({
                         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Source Profile</p>
                         <p className="mt-2 text-sm font-semibold text-white">{reviewCase.source_criminal.name}</p>
                         <p className="mt-1 text-xs text-zinc-400">Criminal ID: {reviewCase.source_criminal.id}</p>
+                        <Button asChild variant="link" className="mt-2 h-auto px-0 text-amber-300">
+                            <Link to={`/dashboard/criminals?criminal=${reviewCase.source_criminal.id}`}>
+                                View Criminal Profile
+                            </Link>
+                        </Button>
                     </div>
                     <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Conflicting Profile</p>
                         <p className="mt-2 text-sm font-semibold text-white">{reviewCase.matched_criminal.name}</p>
                         <p className="mt-1 text-xs text-zinc-400">Criminal ID: {reviewCase.matched_criminal.id}</p>
+                        <Button asChild variant="link" className="mt-2 h-auto px-0 text-amber-300">
+                            <Link to={`/dashboard/criminals?criminal=${reviewCase.matched_criminal.id}`}>
+                                View Criminal Profile
+                            </Link>
+                        </Button>
                     </div>
                 </div>
 
@@ -89,6 +112,22 @@ export function DuplicateIdentityReviewCard({
                 ) : null}
 
                 <div className="flex flex-wrap gap-3">
+                    <Button
+                        onClick={() => onMerge(reviewCase, reviewCase.source_criminal.id)}
+                        disabled={isResolving}
+                        className="bg-amber-500 text-black hover:bg-amber-400"
+                    >
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Keep Source Profile
+                    </Button>
+                    <Button
+                        onClick={() => onMerge(reviewCase, reviewCase.matched_criminal.id)}
+                        disabled={isResolving}
+                        className="bg-amber-200 text-black hover:bg-amber-100"
+                    >
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Keep Matched Profile
+                    </Button>
                     <Button
                         onClick={() => onResolve(reviewCase.id, 'confirmed_duplicate')}
                         disabled={isResolving}

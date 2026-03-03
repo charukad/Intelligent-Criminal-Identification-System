@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import or_
 from sqlmodel import select
 
 from src.domain.models.review_case import ReviewCase, ReviewCaseStatus, ReviewCaseType
@@ -43,8 +44,18 @@ class ReviewCaseRepository(BaseRepository[ReviewCase]):
             select(ReviewCase)
             .where(ReviewCase.case_type == ReviewCaseType.DUPLICATE_IDENTITY)
             .where(ReviewCase.status == ReviewCaseStatus.OPEN)
-            .where(ReviewCase.source_criminal_id == source_criminal_id)
-            .where(ReviewCase.matched_criminal_id == matched_criminal_id)
+            .where(
+                or_(
+                    (
+                        (ReviewCase.source_criminal_id == source_criminal_id)
+                        & (ReviewCase.matched_criminal_id == matched_criminal_id)
+                    ),
+                    (
+                        (ReviewCase.source_criminal_id == matched_criminal_id)
+                        & (ReviewCase.matched_criminal_id == source_criminal_id)
+                    ),
+                )
+            )
             .order_by(ReviewCase.created_at.desc())
         )
         result = await self.session.execute(statement)

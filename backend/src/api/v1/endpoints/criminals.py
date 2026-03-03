@@ -12,6 +12,7 @@ from src.infrastructure.repositories.identity_template import IdentityTemplateRe
 from src.infrastructure.repositories.audit import AuditRepository
 from src.infrastructure.repositories.review_case import ReviewCaseRepository
 from src.services.criminal_service import CriminalService
+from src.services.criminal_merge_service import CriminalMergeService
 from src.services.ai.face_quality import sort_quality_warnings
 from src.services.duplicate_identity_service import (
     DuplicateIdentityConflictError,
@@ -21,9 +22,24 @@ from src.services.face_quality_service import FaceQualityService
 from src.services.face_enrollment_service import FaceEnrollmentService, delete_stored_face_image
 from src.services.identity_template_service import IdentityTemplateService
 from src.services.ai.runtime import pipeline
-from src.schemas.criminal import CriminalCreate, CriminalResponse, CriminalUpdate, CriminalListResponse, CriminalFaceResponse
+from src.schemas.criminal import (
+    CriminalCreate,
+    CriminalResponse,
+    CriminalUpdate,
+    CriminalListResponse,
+    CriminalFaceResponse,
+    CriminalFaceReviewActionResponse,
+    CriminalTemplateRebuildResponse,
+)
 from src.schemas.face_quality import FaceQualityPreviewResponse
-from src.schemas.review_case import ReviewCaseResolveRequest, ReviewCaseResponse
+from src.schemas.identity_template import IdentityTemplateResponse
+from src.schemas.review_case import (
+    ManualDuplicateReviewCaseCreateRequest,
+    ReviewCaseMergeRequest,
+    ReviewCaseMergeResponse,
+    ReviewCaseResolveRequest,
+    ReviewCaseResponse,
+)
 from src.api.deps import get_current_user, get_officer_or_above, get_admin_or_senior_officer
 from src.domain.models.user import User
 from src.domain.models.criminal import Criminal, ThreatLevel, LegalStatus
@@ -65,6 +81,9 @@ def serialize_face(face: Any) -> dict[str, Any]:
             face.box_w if face.box_w is not None else 0,
             face.box_h if face.box_h is not None else 0,
         ),
+        "exclude_from_template": bool(getattr(face, "exclude_from_template", False)),
+        "operator_review_status": getattr(face, "operator_review_status", "normal"),
+        "operator_review_notes": getattr(face, "operator_review_notes", None),
         "template_role": getattr(face, "template_role", "archived"),
         "template_distance": float(face.template_distance) if getattr(face, "template_distance", None) is not None else None,
         "quality": serialize_face_quality(face),
@@ -87,6 +106,34 @@ def serialize_criminal(criminal: Criminal, primary_face_image_url: Optional[str]
         "physical_description": criminal.physical_description,
         "primary_face_image_url": primary_face_image_url,
     }
+
+
+def deserialize_uuid_list(serialized_values: Optional[str]) -> list[UUID]:
+    if not serialized_values:
+        return []
+    return [UUID(value) for value in serialized_values.split("|") if value]
+
+
+def serialize_identity_template(template: IdentityTemplate | None) -> IdentityTemplateResponse | None:
+    if template is None:
+        return None
+
+    return IdentityTemplateResponse(
+        id=template.id,
+        criminal_id=template.criminal_id,
+        template_version=template.template_version,
+        embedding_version=template.embedding_version,
+        primary_face_id=template.primary_face_id,
+        included_face_ids=deserialize_uuid_list(template.included_face_ids),
+        support_face_ids=deserialize_uuid_list(template.support_face_ids),
+        archived_face_ids=deserialize_uuid_list(template.archived_face_ids),
+        outlier_face_ids=deserialize_uuid_list(template.outlier_face_ids),
+        active_face_count=template.active_face_count,
+        support_face_count=template.support_face_count,
+        archived_face_count=template.archived_face_count,
+        outlier_face_count=template.outlier_face_count,
+        updated_at=template.updated_at,
+    )
 
 
 async def serialize_review_case(review_case: ReviewCase, db: AsyncSession) -> dict[str, Any]:
@@ -152,6 +199,39 @@ async def list_duplicate_review_cases(
     return [await serialize_review_case(review_case, db) for review_case in review_cases]
 
 
+@router.post("/review-cases/duplicate-identities/manual", response_model=ReviewCaseResponse)
+async def create_manual_duplicate_review_case(
+    review_case_in: ManualDuplicateReviewCaseCreateRequest,
+    current_user: User = Depends(get_officer_or_above()),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    review_case_repo = ReviewCaseRepository(db)
+    duplicate_service = DuplicateIdentityService(
+        IdentityTemplateRepository(db),
+        CriminalRepository(db),
+        FaceRepository(db),
+        review_case_repo,
+    )
+
+    try:
+        review_case = await duplicate_service.create_manual_review_case(
+            source_criminal_id=review_case_in.source_criminal_id,
+            matched_criminal_id=review_case_in.matched_criminal_id,
+            source_face_id=review_case_in.source_face_id,
+            matched_face_id=review_case_in.matched_face_id,
+            distance=review_case_in.distance,
+            embedding_version=review_case_in.embedding_version,
+            template_version=review_case_in.template_version,
+            submitted_filename=review_case_in.submitted_filename,
+            notes=review_case_in.notes,
+            created_by_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return await serialize_review_case(review_case, db)
+
+
 @router.post("/review-cases/{review_case_id}/resolve", response_model=ReviewCaseResponse)
 async def resolve_duplicate_review_case(
     review_case_id: UUID,
@@ -178,6 +258,38 @@ async def resolve_duplicate_review_case(
         raise HTTPException(status_code=400, detail=str(exc))
 
     return await serialize_review_case(review_case, db)
+
+
+@router.post("/review-cases/{review_case_id}/merge", response_model=ReviewCaseMergeResponse)
+async def merge_duplicate_review_case(
+    review_case_id: UUID,
+    merge_in: ReviewCaseMergeRequest,
+    current_user: User = Depends(get_admin_or_senior_officer()),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    criminal_repo = CriminalRepository(db)
+    face_repo = FaceRepository(db)
+    review_case_repo = ReviewCaseRepository(db)
+    audit_repo = AuditRepository(db)
+    template_repo = IdentityTemplateRepository(db)
+    template_service = IdentityTemplateService(template_repo, face_repo)
+    merge_service = CriminalMergeService(
+        criminal_repo=criminal_repo,
+        face_repo=face_repo,
+        review_case_repo=review_case_repo,
+        audit_repo=audit_repo,
+        template_service=template_service,
+    )
+
+    try:
+        return await merge_service.merge_from_review_case(
+            review_case_id=review_case_id,
+            survivor_criminal_id=merge_in.survivor_criminal_id,
+            resolved_by_id=current_user.id,
+            resolution_notes=merge_in.resolution_notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @router.get("/", response_model=CriminalListResponse)
 async def list_criminals(
@@ -514,6 +626,72 @@ async def set_criminal_face_as_primary(
         return await service.set_primary_face(
             criminal_id=criminal_id,
             face_id=face_id,
+            user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/{criminal_id}/faces/{face_id}/mark-bad", response_model=CriminalFaceReviewActionResponse)
+async def mark_criminal_face_as_bad(
+    criminal_id: UUID,
+    face_id: UUID,
+    notes: str | None = Form(None),
+    current_user: User = Depends(get_officer_or_above()),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Mark an enrolled face as a bad enrollment and exclude it from the active identity template.
+    """
+    face_repo = FaceRepository(db)
+    criminal_repo = CriminalRepository(db)
+    audit_repo = AuditRepository(db)
+    template_repo = IdentityTemplateRepository(db)
+    template_service = IdentityTemplateService(template_repo, face_repo)
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
+
+    try:
+        return await service.mark_face_as_bad(
+            criminal_id=criminal_id,
+            face_id=face_id,
+            notes=notes,
+            user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/{criminal_id}/template/recompute", response_model=CriminalTemplateRebuildResponse)
+async def recompute_criminal_template(
+    criminal_id: UUID,
+    current_user: User = Depends(get_officer_or_above()),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Rebuild the criminal identity template from the current enrolled faces.
+    """
+    face_repo = FaceRepository(db)
+    criminal_repo = CriminalRepository(db)
+    audit_repo = AuditRepository(db)
+    template_repo = IdentityTemplateRepository(db)
+    template_service = IdentityTemplateService(template_repo, face_repo)
+    service = FaceEnrollmentService(
+        pipeline,
+        face_repo,
+        criminal_repo,
+        audit_repo,
+        template_service=template_service,
+    )
+
+    try:
+        return await service.recompute_template(
+            criminal_id=criminal_id,
             user_id=current_user.id,
         )
     except ValueError as exc:

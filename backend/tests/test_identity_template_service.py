@@ -15,6 +15,7 @@ def build_face(*, embedding, is_primary=False, created_at_offset=0):
         embedding=embedding,
         is_primary=is_primary,
         quality_status="accepted",
+        exclude_from_template=False,
         embedding_version="tracenet_v1",
         created_at=datetime.now(timezone.utc) + timedelta(seconds=created_at_offset),
     )
@@ -75,3 +76,30 @@ async def test_rebuild_for_criminal_flags_far_embedding_as_outlier():
     assert template.active_face_count == 2
     assert template.outlier_face_count == 1
     assert str(outlier_face.id) in (template.outlier_face_ids or "")
+
+
+@pytest.mark.asyncio
+async def test_rebuild_for_criminal_skips_faces_manually_excluded_from_template():
+    criminal_id = uuid4()
+    primary_face = build_face(embedding=[1.0, 0.0, 0.0], is_primary=True, created_at_offset=0)
+    excluded_face = build_face(embedding=[0.999, 0.02, 0.0], created_at_offset=1)
+    excluded_face.exclude_from_template = True
+    for face in (primary_face, excluded_face):
+        face.criminal_id = criminal_id
+
+    face_repo = AsyncMock()
+    face_repo.list_by_criminal.return_value = [primary_face, excluded_face]
+    template_repo = AsyncMock()
+    template_repo.upsert_template.side_effect = (
+        lambda passed_criminal_id, payload: SimpleNamespace(criminal_id=passed_criminal_id, **payload)
+    )
+
+    service = IdentityTemplateService(template_repo, face_repo)
+    template = await service.rebuild_for_criminal(criminal_id)
+
+    face_updates = face_repo.bulk_update_template_membership.await_args.args[0]
+    assert face_updates[primary_face.id]["template_role"] == "primary"
+    assert face_updates[excluded_face.id]["template_role"] == "archived"
+    assert face_updates[excluded_face.id]["template_distance"] is None
+    assert template.active_face_count == 1
+    assert str(excluded_face.id) not in (template.included_face_ids or "")

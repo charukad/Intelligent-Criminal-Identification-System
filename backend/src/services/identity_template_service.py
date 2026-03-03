@@ -64,6 +64,7 @@ class IdentityTemplateService:
             for face in faces
             if getattr(face, "embedding", None) is not None
             and getattr(face, "quality_status", "accepted") != "rejected"
+            and not bool(getattr(face, "exclude_from_template", False))
         ]
         if not eligible_faces:
             return {"face_updates": face_updates, "template_payload": None}

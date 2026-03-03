@@ -19,6 +19,7 @@ from src.services.duplicate_identity_service import (
 )
 from src.services.face_quality_service import get_quality_reason_message, serialize_quality_report
 from src.services.identity_template_service import IdentityTemplateService
+from src.schemas.identity_template import IdentityTemplateResponse
 
 
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "faces"
@@ -162,6 +163,9 @@ class FaceEnrollmentService:
             "embedding_version": created_face.embedding_version,
             "created_at": created_face.created_at,
             "box": face_data["box"],
+            "exclude_from_template": bool(getattr(created_face, "exclude_from_template", False)),
+            "operator_review_status": getattr(created_face, "operator_review_status", "normal"),
+            "operator_review_notes": getattr(created_face, "operator_review_notes", None),
             "template_role": getattr(created_face, "template_role", "archived"),
             "template_distance": float(created_face.template_distance) if getattr(created_face, "template_distance", None) is not None else None,
             "quality": serialize_quality_report(quality_report),
@@ -225,6 +229,8 @@ class FaceEnrollmentService:
         face = await self.face_repo.get(face_id)
         if not face or face.criminal_id != criminal_id:
             raise ValueError("Face record not found")
+        if bool(getattr(face, "exclude_from_template", False)):
+            raise ValueError("Cannot promote a face that has been marked as bad enrollment")
 
         if face.is_primary:
             return {
@@ -252,6 +258,95 @@ class FaceEnrollmentService:
             "status": "success",
             "message": "Primary face updated",
             "face_id": str(face_id),
+        }
+
+    async def mark_face_as_bad(
+        self,
+        criminal_id: UUID,
+        face_id: UUID,
+        user_id: UUID | None = None,
+        notes: str | None = None,
+    ) -> Dict[str, Any]:
+        criminal = await self.criminal_repo.get(criminal_id)
+        if not criminal:
+            raise ValueError("Criminal not found")
+
+        face = await self.face_repo.get(face_id)
+        if not face or face.criminal_id != criminal_id:
+            raise ValueError("Face record not found")
+
+        was_primary = bool(face.is_primary)
+        updated_face = await self.face_repo.update(
+            face,
+            {
+                "exclude_from_template": True,
+                "operator_review_status": "marked_bad",
+                "operator_review_notes": notes,
+                "is_primary": False if was_primary else face.is_primary,
+            },
+        )
+
+        promoted_face_id = None
+        if was_primary:
+            replacement_face = await self.face_repo.get_template_eligible_face_for_promotion(
+                criminal_id,
+                exclude_face_id=face_id,
+            )
+            if replacement_face is not None:
+                await self.face_repo.set_primary(replacement_face.id)
+                promoted_face_id = replacement_face.id
+
+        if self.template_service is not None:
+            await self.template_service.rebuild_for_criminal(criminal_id)
+            refreshed_face = await self.face_repo.get(face_id)
+            if refreshed_face is not None:
+                updated_face = refreshed_face
+
+        await self.audit_repo.create(
+            AuditLog(
+                action="FACE_MARK_BAD",
+                details=f"Marked face {face_id} as bad enrollment for criminal {criminal_id}",
+                user_id=user_id,
+                criminal_id=criminal_id,
+            )
+        )
+        logger.info("Marked face %s as bad enrollment for criminal %s", face_id, criminal_id)
+
+        return {
+            "status": "success",
+            "message": "Face enrollment marked as bad and excluded from the active template.",
+            "promoted_face_id": str(promoted_face_id) if promoted_face_id else None,
+            "face": self._serialize_face_record(updated_face),
+        }
+
+    async def recompute_template(
+        self,
+        criminal_id: UUID,
+        user_id: UUID | None = None,
+    ) -> Dict[str, Any]:
+        criminal = await self.criminal_repo.get(criminal_id)
+        if not criminal:
+            raise ValueError("Criminal not found")
+        if self.template_service is None:
+            raise ValueError("Identity template service is not configured")
+
+        template = await self.template_service.rebuild_for_criminal(criminal_id)
+
+        await self.audit_repo.create(
+            AuditLog(
+                action="FACE_TEMPLATE_RECOMPUTE",
+                details=f"Recomputed identity template for criminal {criminal_id}",
+                user_id=user_id,
+                criminal_id=criminal_id,
+            )
+        )
+        logger.info("Recomputed identity template for criminal %s", criminal_id)
+
+        return {
+            "status": "success",
+            "message": "Identity template rebuilt from the current enrolled faces.",
+            "criminal_id": criminal_id,
+            "template": self._serialize_template_response(template),
         }
 
     def _decode_image(self, image_bytes: bytes) -> np.ndarray:
@@ -302,3 +397,60 @@ class FaceEnrollmentService:
             },
             "status": getattr(review_case, "status", "open"),
         }
+
+    def _serialize_face_record(self, face: FaceEmbedding) -> dict[str, Any]:
+        return {
+            "id": face.id,
+            "criminal_id": face.criminal_id,
+            "image_url": face.image_url,
+            "is_primary": face.is_primary,
+            "embedding_version": face.embedding_version,
+            "created_at": face.created_at,
+            "box": (
+                face.box_x if face.box_x is not None else 0,
+                face.box_y if face.box_y is not None else 0,
+                face.box_w if face.box_w is not None else 0,
+                face.box_h if face.box_h is not None else 0,
+            ),
+            "exclude_from_template": bool(getattr(face, "exclude_from_template", False)),
+            "operator_review_status": getattr(face, "operator_review_status", "normal"),
+            "operator_review_notes": getattr(face, "operator_review_notes", None),
+            "template_role": getattr(face, "template_role", "archived"),
+            "template_distance": float(face.template_distance) if getattr(face, "template_distance", None) is not None else None,
+            "quality": {
+                "status": face.quality_status or "accepted",
+                "quality_score": float(face.quality_score or 0.0),
+                "blur_score": float(face.blur_score or 0.0),
+                "brightness_score": float(face.brightness_score or 0.0),
+                "face_area_ratio": float(face.face_area_ratio or 0.0),
+                "pose_score": float(face.pose_score or 0.0),
+                "occlusion_score": float(face.occlusion_score or 0.0),
+                "warnings": (face.quality_warnings.split("|") if face.quality_warnings else []),
+            },
+            "duplicate_review": None,
+        }
+
+    def _deserialize_uuid_list(self, serialized_values: str | None) -> list[UUID]:
+        if not serialized_values:
+            return []
+        return [UUID(value) for value in serialized_values.split("|") if value]
+
+    def _serialize_template_response(self, template: Any) -> IdentityTemplateResponse | None:
+        if template is None:
+            return None
+        return IdentityTemplateResponse(
+            id=template.id,
+            criminal_id=template.criminal_id,
+            template_version=template.template_version,
+            embedding_version=template.embedding_version,
+            primary_face_id=template.primary_face_id,
+            included_face_ids=self._deserialize_uuid_list(template.included_face_ids),
+            support_face_ids=self._deserialize_uuid_list(template.support_face_ids),
+            archived_face_ids=self._deserialize_uuid_list(template.archived_face_ids),
+            outlier_face_ids=self._deserialize_uuid_list(template.outlier_face_ids),
+            active_face_count=template.active_face_count,
+            support_face_count=template.support_face_count,
+            archived_face_count=template.archived_face_count,
+            outlier_face_count=template.outlier_face_count,
+            updated_at=template.updated_at,
+        )
