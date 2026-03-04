@@ -328,14 +328,17 @@ This is the active implementation order and current status for the repo:
 - [x] Added embedding migration metadata to face records and a migration file for persistence.
 - [x] Added a snapshot-based re-embedding and rollback service with CLI entry points.
 - [x] Generated a real comparison report on the held-out `Face 2` dataset.
-- [ ] Run the live database migration and complete end-to-end rollback validation against the active Docker deployment.
+- [x] Run the live database migration against the active Docker deployment.
+- [x] Validate the rollback snapshot in dry-run mode against the active Docker deployment.
+- [ ] Complete a full live rollback-and-restore drill against the active Docker deployment.
 
 ### Latest Findings
 - Real model comparison on the `face-2-heldout` benchmark showed a decisive difference between the current custom model and the stronger baseline.
 - `tracenet_v1` received a `no_go` decision with own-template top-1 rate `0.306122`.
 - `facenet_vggface2` received a `go` decision with own-template top-1 rate `1.0` and match FAR `0.006667`.
 - Docker runtime selection is now configured to prefer `facenet_vggface2` by default through `FACE_EMBEDDING_VERSION`.
-- The remaining blocker is operational, not architectural: Docker Desktop must be running to apply the new migration and validate live re-embedding against the current database.
+- The live Docker migration is complete: `10` face embeddings were re-embedded to `facenet_vggface2`, `3` identity templates were rebuilt, and the post-migration dry run shows `0` remaining eligible faces.
+- Rollback readiness is in place through snapshot `/app/uploads/migration-backups/facenet_vggface2-20260304-083052.json`, which validated successfully in dry-run mode.
 
 ### Deliverables
 - Compare TraceNet against stronger face-embedding baselines.
