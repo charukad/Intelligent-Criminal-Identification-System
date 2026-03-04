@@ -196,7 +196,9 @@ class RecognitionService:
         
         debug_payload = None
         if include_debug:
+            active_embedding_version = getattr(getattr(self.pipeline, "embedder", None), "embedding_version", None)
             debug_payload = {
+                "query_embedding_version": active_embedding_version,
                 "threshold": threshold,
                 "possible_match_threshold": possible_match_threshold,
                 "match_separation_margin": match_separation_margin,

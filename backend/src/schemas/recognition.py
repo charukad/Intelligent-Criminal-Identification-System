@@ -43,6 +43,7 @@ class RecognitionDebugFace(BaseModel):
 
 
 class RecognitionDebug(BaseModel):
+    query_embedding_version: Optional[str] = None
     threshold: float
     possible_match_threshold: float
     match_separation_margin: float

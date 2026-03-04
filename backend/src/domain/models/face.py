@@ -8,7 +8,8 @@ from pgvector.sqlalchemy import Vector
 class FaceEmbeddingBase(SQLModel):
     image_url: str
     is_primary: bool = False
-    embedding_version: str = "v1"
+    embedding_version: str = "tracenet_v1"
+    embedding_model_name: str = "TraceNet v1"
     box_x: Optional[int] = None
     box_y: Optional[int] = None
     box_w: Optional[int] = None
@@ -35,6 +36,10 @@ class FaceEmbedding(FaceEmbeddingBase, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    embedding_migrated_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
     )
     
     # 512-dimension vector

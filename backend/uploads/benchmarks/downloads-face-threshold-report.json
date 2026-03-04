@@ -1,0 +1,158 @@
+{
+  "report_type": "threshold_governance_report",
+  "generated_at": "2026-03-03T09:59:41.081339+00:00",
+  "dataset": {
+    "name": "downloads-face-heldout",
+    "dataset_root": "/Users/dasuncharuka/Downloads/face",
+    "identity_count": 4,
+    "image_count": 16,
+    "seed": 42,
+    "evaluated_image_count": 15,
+    "failed_image_count": 1
+  },
+  "benchmark_report_generated_at": "2026-03-03T09:59:32.870538+00:00",
+  "recommended_policy": {
+    "match_threshold": 0.004495,
+    "possible_match_threshold": 0.024116,
+    "match_separation_margin": 6.6e-05,
+    "possible_match_separation_margin": 5.1e-05,
+    "match_threshold_source": "far_le_0.010",
+    "possible_match_threshold_source": "positive_probe_p95",
+    "gap_summary": {
+      "count": 10,
+      "min": 3.5e-05,
+      "max": 0.004566,
+      "mean": 0.002208,
+      "std": 0.001603,
+      "median": 0.002538,
+      "p01": 3.8e-05,
+      "p05": 5.1e-05,
+      "p10": 6.6e-05,
+      "p25": 0.000698,
+      "p75": 0.003506,
+      "p90": 0.004128,
+      "p95": 0.004347,
+      "p99": 0.004522
+    },
+    "positive_probe_summary": {
+      "count": 15,
+      "min": 0.002578,
+      "max": 0.025017,
+      "mean": 0.008398,
+      "std": 0.006955,
+      "median": 0.005362,
+      "p01": 0.002634,
+      "p05": 0.002859,
+      "p10": 0.002997,
+      "p25": 0.003993,
+      "p75": 0.00958,
+      "p90": 0.01975,
+      "p95": 0.024116,
+      "p99": 0.024837
+    }
+  },
+  "pair_threshold_recommendations": {
+    "best_balanced_accuracy": {
+      "threshold": 0.00504,
+      "true_accepts": 8,
+      "false_rejects": 13,
+      "false_accepts": 1,
+      "true_rejects": 83,
+      "tar": 0.380952,
+      "frr": 0.619048,
+      "far": 0.011905,
+      "tnr": 0.988095,
+      "precision": 0.888889,
+      "balanced_accuracy": 0.684524
+    },
+    "far_le_0.001": {
+      "threshold": 0.003881,
+      "true_accepts": 3,
+      "false_rejects": 18,
+      "false_accepts": 0,
+      "true_rejects": 84,
+      "tar": 0.142857,
+      "frr": 0.857143,
+      "far": 0.0,
+      "tnr": 1.0,
+      "precision": 1.0,
+      "balanced_accuracy": 0.571429
+    },
+    "far_le_0.010": {
+      "threshold": 0.003881,
+      "true_accepts": 3,
+      "false_rejects": 18,
+      "false_accepts": 0,
+      "true_rejects": 84,
+      "tar": 0.142857,
+      "frr": 0.857143,
+      "far": 0.0,
+      "tnr": 1.0,
+      "precision": 1.0,
+      "balanced_accuracy": 0.571429
+    },
+    "far_le_0.050": {
+      "threshold": 0.00504,
+      "true_accepts": 8,
+      "false_rejects": 13,
+      "false_accepts": 1,
+      "true_rejects": 83,
+      "tar": 0.380952,
+      "frr": 0.619048,
+      "far": 0.011905,
+      "tnr": 0.988095,
+      "precision": 0.888889,
+      "balanced_accuracy": 0.684524
+    },
+    "far_le_0.100": {
+      "threshold": 0.006842,
+      "true_accepts": 9,
+      "false_rejects": 12,
+      "false_accepts": 8,
+      "true_rejects": 76,
+      "tar": 0.428571,
+      "frr": 0.571429,
+      "far": 0.095238,
+      "tnr": 0.904762,
+      "precision": 0.529412,
+      "balanced_accuracy": 0.666667
+    }
+  },
+  "checks": {
+    "enough_probe_faces": {
+      "passed": false,
+      "actual": 15,
+      "required": 20
+    },
+    "own_template_top1_rate": {
+      "passed": false,
+      "actual": 0.666667,
+      "required": 0.9
+    },
+    "match_far": {
+      "passed": true,
+      "actual": 0.0,
+      "required": 0.01
+    }
+  },
+  "decision": {
+    "status": "no_go",
+    "failed_checks": [
+      "enough_probe_faces",
+      "own_template_top1_rate"
+    ],
+    "summary": "Benchmark does not support rollout.",
+    "release_checklist": [
+      "Attach the benchmark report JSON to the release or model-change record.",
+      "Record the chosen match and possible-match thresholds in deployment notes.",
+      "Document the benchmark dataset name and image count.",
+      "Do not change production thresholds without a new benchmark report."
+    ]
+  },
+  "threshold_summary": {
+    "recommended_match_threshold": 0.004495,
+    "recommended_possible_match_threshold": 0.024116,
+    "recommended_match_separation_margin": 6.6e-05,
+    "recommended_possible_match_separation_margin": 5.1e-05
+  }
+}

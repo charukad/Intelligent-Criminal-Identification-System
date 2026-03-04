@@ -1,0 +1,824 @@
+{
+  "manifest_version": 1,
+  "dataset": {
+    "name": "downloads-face-heldout",
+    "dataset_root": "/Users/dasuncharuka/Downloads/face",
+    "identity_count": 4,
+    "image_count": 16,
+    "seed": 42
+  },
+  "images": [
+    {
+      "image_id": "hemal:0001",
+      "identity": "hemal",
+      "path": "hemal/65e6899bf04ff.jpg"
+    },
+    {
+      "image_id": "hemal:0002",
+      "identity": "hemal",
+      "path": "hemal/download.jpeg"
+    },
+    {
+      "image_id": "hemal:0003",
+      "identity": "hemal",
+      "path": "hemal/untitled folder/plc-hemal-3.jpg"
+    },
+    {
+      "image_id": "pri:0001",
+      "identity": "pri",
+      "path": "pri/priyankaares_1771629199_3837023753222077391_225723769.jpg"
+    },
+    {
+      "image_id": "pri:0002",
+      "identity": "pri",
+      "path": "pri/priyankaares_1771629199_3837023805650849427_225723769.jpg"
+    },
+    {
+      "image_id": "pri:0003",
+      "identity": "pri",
+      "path": "pri/priyankaares_1771629199_3837023813938834090_225723769.jpg"
+    },
+    {
+      "image_id": "pri:0004",
+      "identity": "pri",
+      "path": "pri/untitled folder/priyankaares_1771517031_3836083192479163221_225723769.jpg"
+    },
+    {
+      "image_id": "str:0001",
+      "identity": "str",
+      "path": "str/starrleenworld__1772248800_3842002125480375004_510136266.jpg"
+    },
+    {
+      "image_id": "str:0002",
+      "identity": "str",
+      "path": "str/starrleenworld__1772248800_3842002125480380849_510136266.jpg"
+    },
+    {
+      "image_id": "str:0003",
+      "identity": "str",
+      "path": "str/starrleenworld__1772248800_3842002125656522711_510136266.jpg"
+    },
+    {
+      "image_id": "str:0004",
+      "identity": "str",
+      "path": "str/untitled folder/629367274_18559613308056267_336650899451204748_n.jpg"
+    },
+    {
+      "image_id": "test peron:0001",
+      "identity": "test peron",
+      "path": "test peron/perosn1.jpeg"
+    },
+    {
+      "image_id": "test peron:0002",
+      "identity": "test peron",
+      "path": "test peron/perosn2.jpeg"
+    },
+    {
+      "image_id": "test peron:0003",
+      "identity": "test peron",
+      "path": "test peron/perosn6.jpeg"
+    },
+    {
+      "image_id": "test peron:0004",
+      "identity": "test peron",
+      "path": "test peron/perosn7.jpeg"
+    },
+    {
+      "image_id": "test peron:0005",
+      "identity": "test peron",
+      "path": "test peron/untitled folder/perosn4.jpeg"
+    }
+  ],
+  "pairs": {
+    "positive": [
+      {
+        "pair_id": "pos:hemal:00001",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "hemal:0002",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:hemal:00002",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "hemal:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:hemal:00003",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "hemal:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:pri:00004",
+        "left_image_id": "pri:0001",
+        "right_image_id": "pri:0002",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:pri:00005",
+        "left_image_id": "pri:0001",
+        "right_image_id": "pri:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:pri:00006",
+        "left_image_id": "pri:0001",
+        "right_image_id": "pri:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:pri:00007",
+        "left_image_id": "pri:0002",
+        "right_image_id": "pri:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:pri:00008",
+        "left_image_id": "pri:0002",
+        "right_image_id": "pri:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:pri:00009",
+        "left_image_id": "pri:0003",
+        "right_image_id": "pri:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:str:00010",
+        "left_image_id": "str:0001",
+        "right_image_id": "str:0002",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:str:00011",
+        "left_image_id": "str:0001",
+        "right_image_id": "str:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:str:00012",
+        "left_image_id": "str:0001",
+        "right_image_id": "str:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:str:00013",
+        "left_image_id": "str:0002",
+        "right_image_id": "str:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:str:00014",
+        "left_image_id": "str:0002",
+        "right_image_id": "str:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:str:00015",
+        "left_image_id": "str:0003",
+        "right_image_id": "str:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00016",
+        "left_image_id": "test peron:0001",
+        "right_image_id": "test peron:0002",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00017",
+        "left_image_id": "test peron:0001",
+        "right_image_id": "test peron:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00018",
+        "left_image_id": "test peron:0001",
+        "right_image_id": "test peron:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00019",
+        "left_image_id": "test peron:0001",
+        "right_image_id": "test peron:0005",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00020",
+        "left_image_id": "test peron:0002",
+        "right_image_id": "test peron:0003",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00021",
+        "left_image_id": "test peron:0002",
+        "right_image_id": "test peron:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00022",
+        "left_image_id": "test peron:0002",
+        "right_image_id": "test peron:0005",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00023",
+        "left_image_id": "test peron:0003",
+        "right_image_id": "test peron:0004",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00024",
+        "left_image_id": "test peron:0003",
+        "right_image_id": "test peron:0005",
+        "label": "same_identity"
+      },
+      {
+        "pair_id": "pos:test peron:00025",
+        "left_image_id": "test peron:0004",
+        "right_image_id": "test peron:0005",
+        "label": "same_identity"
+      }
+    ],
+    "negative": [
+      {
+        "pair_id": "neg:hemal:pri:00001",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "pri:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00002",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "pri:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00003",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "pri:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00004",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "pri:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00005",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "pri:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00006",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "pri:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00007",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "pri:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00008",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "pri:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00009",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "pri:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00010",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "pri:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00011",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "pri:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:pri:00012",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "pri:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00013",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00014",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00015",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00016",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00017",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00018",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00019",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00020",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00021",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00022",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00023",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:str:00024",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00025",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00026",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00027",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00028",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00029",
+        "left_image_id": "hemal:0001",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00030",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00031",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00032",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00033",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00034",
+        "left_image_id": "hemal:0002",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00035",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00036",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00037",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00038",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:hemal:test peron:00039",
+        "left_image_id": "hemal:0003",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00040",
+        "left_image_id": "pri:0001",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00041",
+        "left_image_id": "pri:0001",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00042",
+        "left_image_id": "pri:0001",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00043",
+        "left_image_id": "pri:0001",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00044",
+        "left_image_id": "pri:0002",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00045",
+        "left_image_id": "pri:0002",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00046",
+        "left_image_id": "pri:0002",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00047",
+        "left_image_id": "pri:0002",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00048",
+        "left_image_id": "pri:0003",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00049",
+        "left_image_id": "pri:0003",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00050",
+        "left_image_id": "pri:0003",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00051",
+        "left_image_id": "pri:0003",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00052",
+        "left_image_id": "pri:0004",
+        "right_image_id": "str:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00053",
+        "left_image_id": "pri:0004",
+        "right_image_id": "str:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00054",
+        "left_image_id": "pri:0004",
+        "right_image_id": "str:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:str:00055",
+        "left_image_id": "pri:0004",
+        "right_image_id": "str:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00056",
+        "left_image_id": "pri:0001",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00057",
+        "left_image_id": "pri:0001",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00058",
+        "left_image_id": "pri:0001",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00059",
+        "left_image_id": "pri:0001",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00060",
+        "left_image_id": "pri:0001",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00061",
+        "left_image_id": "pri:0002",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00062",
+        "left_image_id": "pri:0002",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00063",
+        "left_image_id": "pri:0002",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00064",
+        "left_image_id": "pri:0002",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00065",
+        "left_image_id": "pri:0002",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00066",
+        "left_image_id": "pri:0003",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00067",
+        "left_image_id": "pri:0003",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00068",
+        "left_image_id": "pri:0003",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00069",
+        "left_image_id": "pri:0003",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00070",
+        "left_image_id": "pri:0003",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00071",
+        "left_image_id": "pri:0004",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00072",
+        "left_image_id": "pri:0004",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00073",
+        "left_image_id": "pri:0004",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00074",
+        "left_image_id": "pri:0004",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:pri:test peron:00075",
+        "left_image_id": "pri:0004",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00076",
+        "left_image_id": "str:0001",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00077",
+        "left_image_id": "str:0001",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00078",
+        "left_image_id": "str:0001",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00079",
+        "left_image_id": "str:0001",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00080",
+        "left_image_id": "str:0001",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00081",
+        "left_image_id": "str:0002",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00082",
+        "left_image_id": "str:0002",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00083",
+        "left_image_id": "str:0002",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00084",
+        "left_image_id": "str:0002",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00085",
+        "left_image_id": "str:0002",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00086",
+        "left_image_id": "str:0003",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00087",
+        "left_image_id": "str:0003",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00088",
+        "left_image_id": "str:0003",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00089",
+        "left_image_id": "str:0003",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00090",
+        "left_image_id": "str:0003",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00091",
+        "left_image_id": "str:0004",
+        "right_image_id": "test peron:0001",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00092",
+        "left_image_id": "str:0004",
+        "right_image_id": "test peron:0002",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00093",
+        "left_image_id": "str:0004",
+        "right_image_id": "test peron:0003",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00094",
+        "left_image_id": "str:0004",
+        "right_image_id": "test peron:0004",
+        "label": "different_identity"
+      },
+      {
+        "pair_id": "neg:str:test peron:00095",
+        "left_image_id": "str:0004",
+        "right_image_id": "test peron:0005",
+        "label": "different_identity"
+      }
+    ],
+    "metadata": {
+      "total_possible_positive_pairs": 25,
+      "total_possible_negative_pairs": 95,
+      "sampled_positive_pairs": 25,
+      "sampled_negative_pairs": 95
+    }
+  }
+}

@@ -13,6 +13,7 @@ from src.infrastructure.repositories.criminal import CriminalRepository
 from src.infrastructure.repositories.face import FaceRepository
 from src.services.ai.face_quality import FaceQualityAssessor, FaceQualityReport
 from src.services.ai.pipeline import FaceProcessingPipeline
+from src.services.ai.strategies import get_model_version_metadata, normalize_embedding_version
 from src.services.duplicate_identity_service import (
     DuplicateIdentityConflictError,
     DuplicateIdentityService,
@@ -23,7 +24,6 @@ from src.schemas.identity_template import IdentityTemplateResponse
 
 
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "faces"
-EMBEDDING_VERSION = "tracenet_v1"
 
 
 def delete_stored_face_image(image_url: str) -> None:
@@ -108,12 +108,16 @@ class FaceEnrollmentService:
         if is_primary:
             await self.face_repo.unset_primary_for_criminal(criminal_id)
 
+        embedding_version = self._resolve_embedding_version()
+        model_metadata = get_model_version_metadata(embedding_version)
+
         face_embedding = FaceEmbedding(
             id=face_id,
             criminal_id=criminal_id,
             image_url=image_url,
             is_primary=is_primary,
-            embedding_version=EMBEDDING_VERSION,
+            embedding_version=embedding_version,
+            embedding_model_name=model_metadata["display_name"],
             box_x=x,
             box_y=y,
             box_w=w,
@@ -384,6 +388,13 @@ class FaceEnrollmentService:
         if not warnings:
             return None
         return "|".join(warnings)
+
+    def _resolve_embedding_version(self) -> str:
+        embedder = getattr(self.pipeline, "embedder", None)
+        raw_version = getattr(embedder, "embedding_version", None)
+        if not isinstance(raw_version, str):
+            return normalize_embedding_version(None)
+        return normalize_embedding_version(raw_version)
 
     def _serialize_duplicate_review(self, review_case: Any, assessment: Any) -> dict[str, Any]:
         return {

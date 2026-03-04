@@ -15,6 +15,25 @@ from src.core.logging import logger
 # Default path to the trained TraceNet checkpoint
 _MODELS_DIR = Path(__file__).resolve().parents[3] / "models"
 DEFAULT_TRACENET_PATH = _MODELS_DIR / "TraceNet_deployment.pth"
+DEFAULT_EMBEDDING_VERSION = "tracenet_v1"
+FACENET_EMBEDDING_VERSION = "facenet_vggface2"
+
+MODEL_VERSION_REGISTRY: dict[str, dict[str, Any]] = {
+    DEFAULT_EMBEDDING_VERSION: {
+        "display_name": "TraceNet v1",
+        "family": "tracenet",
+        "embedding_dimensions": 512,
+        "default_template_version": "tracenet_template_v1",
+        "notes": "Custom TraceNet deployment checkpoint.",
+    },
+    FACENET_EMBEDDING_VERSION: {
+        "display_name": "FaceNet VGGFace2",
+        "family": "facenet",
+        "embedding_dimensions": 512,
+        "default_template_version": "facenet_template_v1",
+        "notes": "facenet-pytorch InceptionResnetV1 VGGFace2 baseline.",
+    },
+}
 
 
 class MTCNNStrategy(FaceDetectionStrategy):
@@ -102,6 +121,8 @@ class InceptionResnetStrategy(FaceEmbeddingStrategy):
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
         if not torch.cuda.is_available() and torch.backends.mps.is_available():
             self.device = 'mps'
+        self.embedding_version = FACENET_EMBEDDING_VERSION
+        self.model_name = MODEL_VERSION_REGISTRY[FACENET_EMBEDDING_VERSION]["display_name"]
             
         logger.info(f"Initializing FaceNet (InceptionResnetV1) on device: {self.device}")
         self.resnet = InceptionResnetV1(pretrained='vggface2').eval().to(self.device)
@@ -127,7 +148,8 @@ class InceptionResnetStrategy(FaceEmbeddingStrategy):
             
             with torch.no_grad():
                 embedding = self.resnet(img_tensor)
-                
+                embedding = F.normalize(embedding, p=2, dim=1)
+
             return cast(List[float], embedding[0].cpu().numpy().tolist())
 
         except Exception as e:
@@ -150,10 +172,16 @@ class TraceNetStrategy(FaceEmbeddingStrategy):
         self,
         model_path: str | Path | None = None,
         device: str | None = None,
+        embedding_version: str = DEFAULT_EMBEDDING_VERSION,
     ) -> None:
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
         if not torch.cuda.is_available() and torch.backends.mps.is_available():
             self.device = 'mps'
+        self.embedding_version = embedding_version
+        self.model_name = MODEL_VERSION_REGISTRY.get(
+            normalize_embedding_version(embedding_version),
+            MODEL_VERSION_REGISTRY[DEFAULT_EMBEDDING_VERSION],
+        )["display_name"]
 
         resolved_path = Path(model_path) if model_path else DEFAULT_TRACENET_PATH
         logger.info(
@@ -216,3 +244,71 @@ class TraceNetStrategy(FaceEmbeddingStrategy):
         except Exception as e:
             logger.error(f"TraceNet Embedding Error: {e}")
             raise e
+
+
+def normalize_embedding_version(embedding_version: str | None) -> str:
+    if not embedding_version:
+        return DEFAULT_EMBEDDING_VERSION
+
+    normalized = embedding_version.strip().lower()
+    aliases = {
+        "tracenet": DEFAULT_EMBEDDING_VERSION,
+        "tracenet_v1": DEFAULT_EMBEDDING_VERSION,
+        "facenet": FACENET_EMBEDDING_VERSION,
+        "facenet_vggface2": FACENET_EMBEDDING_VERSION,
+        "inceptionresnet_vggface2": FACENET_EMBEDDING_VERSION,
+    }
+    return aliases.get(normalized, normalized)
+
+
+def get_model_version_metadata(embedding_version: str) -> dict[str, Any]:
+    normalized = normalize_embedding_version(embedding_version)
+    if normalized in MODEL_VERSION_REGISTRY:
+        return {
+            "version": normalized,
+            **MODEL_VERSION_REGISTRY[normalized],
+        }
+
+    return {
+        "version": normalized,
+        "display_name": normalized,
+        "family": "custom",
+        "embedding_dimensions": 512,
+        "default_template_version": f"{normalized}_template_v1",
+        "notes": "Custom checkpoint or external embedding model.",
+    }
+
+
+def list_supported_model_versions() -> list[dict[str, Any]]:
+    return [
+        {
+            "version": version,
+            **metadata,
+        }
+        for version, metadata in MODEL_VERSION_REGISTRY.items()
+    ]
+
+
+def get_face_embedding_strategy(
+    embedding_version: str | None = None,
+    *,
+    model_path: str | Path | None = None,
+    device: str | None = None,
+) -> FaceEmbeddingStrategy:
+    normalized = normalize_embedding_version(embedding_version)
+
+    if normalized == FACENET_EMBEDDING_VERSION:
+        return InceptionResnetStrategy(device=device)
+
+    if normalized == DEFAULT_EMBEDDING_VERSION or model_path is not None:
+        return TraceNetStrategy(
+            model_path=model_path,
+            device=device,
+            embedding_version=normalized,
+        )
+
+    raise ValueError(
+        f"Unsupported embedding version '{embedding_version}'. "
+        f"Supported versions: {', '.join(version['version'] for version in list_supported_model_versions())}. "
+        f"If you are loading a custom TraceNet checkpoint, pass --model-path with a custom version label."
+    )

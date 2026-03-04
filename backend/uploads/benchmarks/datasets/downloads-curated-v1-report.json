@@ -1,0 +1,304 @@
+{
+  "rashini_kumarasiri": {
+    "candidate_count": 29,
+    "accepted_count": 1,
+    "skipped_count": 28,
+    "accepted_paths": [
+      "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228390529084_1375837422.jpg"
+    ],
+    "skipped_examples": [
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228088504157_1375837422.jpg",
+        "reason": "face_count_3"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228088526975_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228088529625_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228088541156_1375837422.jpg",
+        "reason": "face_count_2"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228088543282_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228105293474_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228105311033_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228113662777_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228122080981_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228390474282_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228390486935_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228390521367_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228398922918_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228424038452_1375837422.jpg",
+        "reason": "face_count_4"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228424046252_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228424050931_1375837422.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228424066381_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1761455156_3751680228424082221_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1772170028_3841561778832830812_1375837422.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/rashini_kumarasiri_1772170028_3841561785996676188_1375837422.jpg",
+        "reason": "face_too_small"
+      }
+    ]
+  },
+  "ishuwaraa": {
+    "candidate_count": 14,
+    "accepted_count": 0,
+    "skipped_count": 14,
+    "accepted_paths": [],
+    "skipped_examples": [
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326538151532_19123760370 (1).jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326538151532_19123760370.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326630467195_19123760370 (1).jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326630467195_19123760370.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326630480826_19123760370 (1).jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326630480826_19123760370.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326697537754_19123760370 (1).jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1760965575_3747573326697537754_19123760370.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1762001585_3756264008203416240_19123760370 (1).jpg",
+        "reason": "face_count_3"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1762001585_3756264008203416240_19123760370.jpg",
+        "reason": "face_count_3"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1762001585_3756264008211793877_19123760370.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1762001585_3756264008211800539_19123760370.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1762001585_3756264008211810016_19123760370 (1).jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/ishuwaraa_1762001585_3756264008211810016_19123760370.jpg",
+        "reason": "face_count_0"
+      }
+    ]
+  },
+  "malutrevejo": {
+    "candidate_count": 13,
+    "accepted_count": 0,
+    "skipped_count": 13,
+    "accepted_paths": [],
+    "skipped_examples": [
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510422725755_2054748451.jpg",
+        "reason": "face_count_2"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510422752502_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510422754586_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510422767986_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431106292_2054748451.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431115345_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431116699_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431149737_2054748451.jpg",
+        "reason": "face_count_2"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431152858_2054748451.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431158102_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510431163692_2054748451.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510565357210_2054748451.jpg",
+        "reason": "face_count_3"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/malutrevejo_1766085278_3790520510565376860_2054748451.jpg",
+        "reason": "face_too_small"
+      }
+    ]
+  },
+  "nadeeshailangakoon": {
+    "candidate_count": 8,
+    "accepted_count": 0,
+    "skipped_count": 8,
+    "accepted_paths": [],
+    "skipped_examples": [
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1744014976_3605381399890022601_2242555800.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1744103003_3606119820027654744_2242555800.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1744195643_3606896938474931618_2242555800.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1758852288_3729845789280238267_2242555800.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1766428974_3793403640254365318_2242555800.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1768094819_3807377757617809395_2242555800.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1769277771_3817301079512084236_2242555800.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/nadeeshailangakoon_1769277771_3817301079537221784_2242555800.jpg",
+        "reason": "extreme_face_pose"
+      }
+    ]
+  },
+  "pawani__official": {
+    "candidate_count": 5,
+    "accepted_count": 0,
+    "skipped_count": 5,
+    "accepted_paths": [],
+    "skipped_examples": [
+      {
+        "path": "/Users/dasuncharuka/Downloads/pawani__official_1770528323_3827791221922915820_37262797916.jpg",
+        "reason": "extreme_face_pose"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/pawani__official_1770528323_3827791244068832794_37262797916.jpg",
+        "reason": "face_count_0"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/pawani__official_1770528323_3827791256324603175_37262797916.jpg",
+        "reason": "face_count_2"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/pawani__official_1770528323_3827791269805066310_37262797916.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/pawani__official_1770528323_3827791287018494497_37262797916.jpg",
+        "reason": "face_too_small"
+      }
+    ]
+  },
+  "maleeshaah": {
+    "candidate_count": 3,
+    "accepted_count": 0,
+    "skipped_count": 3,
+    "accepted_paths": [],
+    "skipped_examples": [
+      {
+        "path": "/Users/dasuncharuka/Downloads/maleeshaah_1753521842_3685130771089471152_39164021594.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/maleeshaah_1753521842_3685130771097785787_39164021594.jpg",
+        "reason": "face_too_small"
+      },
+      {
+        "path": "/Users/dasuncharuka/Downloads/maleeshaah_1760173888_3740932178302515214_39164021594.jpg",
+        "reason": "face_too_small"
+      }
+    ]
+  }
+}

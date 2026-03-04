@@ -258,6 +258,57 @@ TraceIQ is a dual-platform solution (Web & Mobile) designed to unify criminal re
 
 ---
 
+# 5. Interim Implementation Notes
+
+The current repository implements the web platform and benchmark-governance path first. The mobile application described above remains future work.
+
+Implemented recognition/governance advances include:
+*   Criminal-level `identity_templates` built from multiple enrolled faces.
+*   Enrollment quality gates for blur, brightness, face size, pose, and occlusion.
+*   Duplicate-identity review cases and operator merge workflow.
+*   Offline benchmark manifest generation, threshold governance, and release gating.
+*   Model comparison between the custom `TraceNet` stack and stronger baselines.
+*   Re-embedding and rollback tooling for model-version upgrades.
+
+Most recent held-out benchmark result:
+*   `TraceNet v1` -> `no_go`
+*   `FaceNet VGGFace2` -> `go`
+
+This means the project now treats model choice as an evidence-based release decision rather than a fixed assumption.
+
+---
+
+# 5. Benchmark Governance Addendum
+
+The current repository now includes an offline benchmark workflow for facial-recognition threshold review and rollout governance.
+
+## 5.1 Benchmark Dataset Format
+
+- One directory per identity.
+- At least two images per identity.
+- Benchmark folders should be separate from production enrollment assets when possible.
+
+## 5.2 Benchmark Scripts
+
+- `backend/scripts/build_pair_benchmark.py`
+  - Builds a deterministic manifest of positive and negative identity pairs from a labelled image directory.
+- `backend/scripts/run_recognition_benchmark.py`
+  - Runs the current local TraceNet pipeline on the manifest images and produces pair metrics plus template calibration output.
+- `backend/scripts/generate_threshold_report.py`
+  - Converts a benchmark run into a release-facing threshold recommendation and `go / conditional / no_go` decision.
+- `backend/scripts/check_benchmark_gate.py`
+  - Enforces the release gate by failing when the governance report is stale, mismatched, or not approved for rollout.
+
+## 5.3 Rollout Expectation
+
+Recognition thresholds and future model-version changes should not be promoted without:
+
+1. a saved benchmark run JSON
+2. a saved threshold governance report
+3. explicit release notes describing the chosen threshold set and dataset used
+
+---
+
 # 5. API Specification (Endpoints)
 
 ## 5.1 Authentication Group `/api/v1/auth`

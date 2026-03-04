@@ -28,8 +28,8 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 | M2 | Identity template modeling | Each criminal is represented as a stable multi-image identity profile | Completed |
 | M3 | Recognition decision engine | Match decisions are calibrated and tiered | Completed |
 | M5 | Frontend review and operator workflow | Operators can review, inspect, and correct recognition behavior | Completed |
-| M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Partial |
-| M7 | Model upgrade path | The system can be retrained, re-embedded, and rolled forward safely | Not started |
+| M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Completed |
+| M7 | Model upgrade path | The system can be retrained, re-embedded, and rolled forward safely | In progress |
 
 ## Current Execution Order
 
@@ -48,9 +48,9 @@ This is the active implementation order and current status for the repo:
 6. `M5 frontend review workflow`
    Status: `Completed`
 7. `M6 benchmark governance`
-   Status: `Partial`
+   Status: `Completed`
 8. `M7 model upgrade path`
-   Status: `Not started`
+   Status: `In progress`
 
 ## M0. Diagnostics And Evaluation
 
@@ -289,6 +289,14 @@ This is the active implementation order and current status for the repo:
 
 ## M6. Offline Benchmark And Model Governance
 
+### Progress
+- [x] Added a repeatable benchmark-manifest builder for identity-labelled image folders.
+- [x] Added an offline benchmark runner that produces pair metrics and template calibration from a manifest.
+- [x] Added a threshold governance report with a go/conditional/no-go decision and release checklist.
+- [x] Added benchmark dataset-format documentation for local fixtures.
+- [x] Updated repo documentation with the benchmark workflow and rollout expectations.
+- [x] Added a release-gate script that fails when the threshold governance report is stale, mismatched, or not approved.
+
 ### Deliverables
 - Add repeatable evaluation datasets and scripts.
 - Store benchmark outputs for each embedding version.
@@ -313,6 +321,21 @@ This is the active implementation order and current status for the repo:
 - Model releases cannot proceed without benchmark evidence.
 
 ## M7. Model Upgrade Path
+
+### Progress
+- [x] Added a model-version registry for supported embedders and runtime selection through `FACE_EMBEDDING_VERSION`.
+- [x] Added offline model-comparison tooling to benchmark multiple embedders on the same held-out manifest.
+- [x] Added embedding migration metadata to face records and a migration file for persistence.
+- [x] Added a snapshot-based re-embedding and rollback service with CLI entry points.
+- [x] Generated a real comparison report on the held-out `Face 2` dataset.
+- [ ] Run the live database migration and complete end-to-end rollback validation against the active Docker deployment.
+
+### Latest Findings
+- Real model comparison on the `face-2-heldout` benchmark showed a decisive difference between the current custom model and the stronger baseline.
+- `tracenet_v1` received a `no_go` decision with own-template top-1 rate `0.306122`.
+- `facenet_vggface2` received a `go` decision with own-template top-1 rate `1.0` and match FAR `0.006667`.
+- Docker runtime selection is now configured to prefer `facenet_vggface2` by default through `FACE_EMBEDDING_VERSION`.
+- The remaining blocker is operational, not architectural: Docker Desktop must be running to apply the new migration and validate live re-embedding against the current database.
 
 ### Deliverables
 - Compare TraceNet against stronger face-embedding baselines.

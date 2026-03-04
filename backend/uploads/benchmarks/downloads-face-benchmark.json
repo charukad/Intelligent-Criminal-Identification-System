@@ -1,0 +1,475 @@
+{
+  "report_type": "recognition_benchmark",
+  "generated_at": "2026-03-03T09:59:32.870538+00:00",
+  "dataset": {
+    "name": "downloads-face-heldout",
+    "dataset_root": "/Users/dasuncharuka/Downloads/face",
+    "identity_count": 4,
+    "image_count": 16,
+    "seed": 42,
+    "evaluated_image_count": 15,
+    "failed_image_count": 1
+  },
+  "configuration": {
+    "manifest_path": "/Users/dasuncharuka/Documents/projects/face/backend/uploads/benchmarks/downloads-face-manifest.json",
+    "current_threshold": 0.01,
+    "current_match_threshold": 0.003579,
+    "current_possible_match_threshold": 0.00665,
+    "current_match_separation_margin": 0.000268,
+    "current_possible_match_separation_margin": 0.000144,
+    "grid_size": 200
+  },
+  "image_failures": {
+    "count_by_reason": {
+      "expected_single_face_detected:2": 1
+    },
+    "items": [
+      {
+        "image_id": "test peron:0005",
+        "identity": "test peron",
+        "path": "/Users/dasuncharuka/Downloads/face/test peron/untitled folder/perosn4.jpeg",
+        "reason": "expected_single_face_detected:2"
+      }
+    ]
+  },
+  "pair_evaluation": {
+    "metadata": {
+      "requested_positive_pairs": 25,
+      "requested_negative_pairs": 95,
+      "evaluated_positive_pairs": 21,
+      "evaluated_negative_pairs": 84,
+      "missing_pairs": [
+        {
+          "pair_id": "pos:test peron:00019",
+          "label": "same_identity"
+        },
+        {
+          "pair_id": "pos:test peron:00022",
+          "label": "same_identity"
+        },
+        {
+          "pair_id": "pos:test peron:00024",
+          "label": "same_identity"
+        },
+        {
+          "pair_id": "pos:test peron:00025",
+          "label": "same_identity"
+        },
+        {
+          "pair_id": "neg:hemal:test peron:00029",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:hemal:test peron:00034",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:hemal:test peron:00039",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:pri:test peron:00060",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:pri:test peron:00065",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:pri:test peron:00070",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:pri:test peron:00075",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:str:test peron:00080",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:str:test peron:00085",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:str:test peron:00090",
+          "label": "different_identity"
+        },
+        {
+          "pair_id": "neg:str:test peron:00095",
+          "label": "different_identity"
+        }
+      ]
+    },
+    "positive_pairs": {
+      "distance_summary": {
+        "count": 21,
+        "min": 0.002336,
+        "max": 0.025557,
+        "mean": 0.012417,
+        "std": 0.008593,
+        "median": 0.011533,
+        "p01": 0.002525,
+        "p05": 0.003281,
+        "p10": 0.003864,
+        "p25": 0.004709,
+        "p75": 0.023003,
+        "p90": 0.025115,
+        "p95": 0.025154,
+        "p99": 0.025476
+      }
+    },
+    "negative_pairs": {
+      "distance_summary": {
+        "count": 84,
+        "min": 0.004297,
+        "max": 0.027958,
+        "mean": 0.013697,
+        "std": 0.006586,
+        "median": 0.011506,
+        "p01": 0.005137,
+        "p05": 0.006077,
+        "p10": 0.007061,
+        "p25": 0.008551,
+        "p75": 0.018216,
+        "p90": 0.024193,
+        "p95": 0.024994,
+        "p99": 0.027625
+      }
+    },
+    "separation": {
+      "positive_p95": 0.025154,
+      "negative_p05": 0.006077
+    },
+    "threshold_report": {
+      "current_threshold": {
+        "threshold": 0.01,
+        "true_accepts": 10,
+        "false_rejects": 11,
+        "false_accepts": 30,
+        "true_rejects": 54,
+        "tar": 0.47619,
+        "frr": 0.52381,
+        "far": 0.357143,
+        "tnr": 0.642857,
+        "precision": 0.25,
+        "balanced_accuracy": 0.559524
+      },
+      "scanned_threshold_count": 200,
+      "recommended": {
+        "best_balanced_accuracy": {
+          "threshold": 0.00504,
+          "true_accepts": 8,
+          "false_rejects": 13,
+          "false_accepts": 1,
+          "true_rejects": 83,
+          "tar": 0.380952,
+          "frr": 0.619048,
+          "far": 0.011905,
+          "tnr": 0.988095,
+          "precision": 0.888889,
+          "balanced_accuracy": 0.684524
+        },
+        "far_le_0.001": {
+          "threshold": 0.003881,
+          "true_accepts": 3,
+          "false_rejects": 18,
+          "false_accepts": 0,
+          "true_rejects": 84,
+          "tar": 0.142857,
+          "frr": 0.857143,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.571429
+        },
+        "far_le_0.010": {
+          "threshold": 0.003881,
+          "true_accepts": 3,
+          "false_rejects": 18,
+          "false_accepts": 0,
+          "true_rejects": 84,
+          "tar": 0.142857,
+          "frr": 0.857143,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.571429
+        },
+        "far_le_0.050": {
+          "threshold": 0.00504,
+          "true_accepts": 8,
+          "false_rejects": 13,
+          "false_accepts": 1,
+          "true_rejects": 83,
+          "tar": 0.380952,
+          "frr": 0.619048,
+          "far": 0.011905,
+          "tnr": 0.988095,
+          "precision": 0.888889,
+          "balanced_accuracy": 0.684524
+        },
+        "far_le_0.100": {
+          "threshold": 0.006842,
+          "true_accepts": 9,
+          "false_rejects": 12,
+          "false_accepts": 8,
+          "true_rejects": 76,
+          "tar": 0.428571,
+          "frr": 0.571429,
+          "far": 0.095238,
+          "tnr": 0.904762,
+          "precision": 0.529412,
+          "balanced_accuracy": 0.666667
+        }
+      }
+    }
+  },
+  "template_calibration": {
+    "dataset": {
+      "template_count": 4,
+      "total_eligible_probe_faces": 15,
+      "evaluated_probe_faces": 15,
+      "skipped_no_holdout_faces": 0
+    },
+    "positive_probe_distances": {
+      "distance_summary": {
+        "count": 15,
+        "min": 0.002578,
+        "max": 0.025017,
+        "mean": 0.008398,
+        "std": 0.006955,
+        "median": 0.005362,
+        "p01": 0.002634,
+        "p05": 0.002859,
+        "p10": 0.002997,
+        "p25": 0.003993,
+        "p75": 0.00958,
+        "p90": 0.01975,
+        "p95": 0.024116,
+        "p99": 0.024837
+      }
+    },
+    "nearest_other_template_distances": {
+      "distance_summary": {
+        "count": 15,
+        "min": 0.004722,
+        "max": 0.023917,
+        "mean": 0.009181,
+        "std": 0.005524,
+        "median": 0.007256,
+        "p01": 0.00488,
+        "p05": 0.005511,
+        "p10": 0.005873,
+        "p25": 0.006199,
+        "p75": 0.008316,
+        "p90": 0.017403,
+        "p95": 0.022229,
+        "p99": 0.023579
+      }
+    },
+    "separation_gaps": {
+      "distance_summary": {
+        "count": 15,
+        "min": -0.004697,
+        "max": 0.004566,
+        "mean": 0.000783,
+        "std": 0.002553,
+        "median": 0.000621,
+        "p01": -0.004351,
+        "p05": -0.002966,
+        "p10": -0.002162,
+        "p25": -0.000671,
+        "p75": 0.00293,
+        "p90": 0.003913,
+        "p95": 0.004225,
+        "p99": 0.004498
+      }
+    },
+    "top1_positive_separation_gaps": {
+      "distance_summary": {
+        "count": 10,
+        "min": 3.5e-05,
+        "max": 0.004566,
+        "mean": 0.002208,
+        "std": 0.001603,
+        "median": 0.002538,
+        "p01": 3.8e-05,
+        "p05": 5.1e-05,
+        "p10": 6.6e-05,
+        "p25": 0.000698,
+        "p75": 0.003506,
+        "p90": 0.004128,
+        "p95": 0.004347,
+        "p99": 0.004522
+      }
+    },
+    "current_policy_probe_outcomes": {
+      "match_distance_summary": {
+        "count": 3,
+        "min": 0.002578,
+        "max": 0.003023,
+        "mean": 0.00286,
+        "std": 0.0002,
+        "median": 0.00298,
+        "p01": 0.002586,
+        "p05": 0.002618,
+        "p10": 0.002658,
+        "p25": 0.002779,
+        "p75": 0.003001,
+        "p90": 0.003014,
+        "p95": 0.003018,
+        "p99": 0.003022
+      },
+      "possible_match_distance_summary": {
+        "count": 6,
+        "min": 0.003593,
+        "max": 0.005483,
+        "mean": 0.004699,
+        "std": 0.00065,
+        "median": 0.004681,
+        "p01": 0.003633,
+        "p05": 0.003793,
+        "p10": 0.003993,
+        "p25": 0.004394,
+        "p75": 0.005263,
+        "p90": 0.005423,
+        "p95": 0.005453,
+        "p99": 0.005477
+      }
+    },
+    "ranking": {
+      "own_template_top1_count": 10,
+      "own_template_not_top1_count": 5,
+      "own_template_top1_rate": 0.666667,
+      "own_template_rank_histogram": {
+        "1": 10,
+        "2": 1,
+        "3": 4
+      }
+    },
+    "threshold_report": {
+      "current_threshold": {
+        "threshold": 0.003579,
+        "true_accepts": 3,
+        "false_rejects": 12,
+        "false_accepts": 0,
+        "true_rejects": 15,
+        "tar": 0.2,
+        "frr": 0.8,
+        "far": 0.0,
+        "tnr": 1.0,
+        "precision": 1.0,
+        "balanced_accuracy": 0.6
+      },
+      "scanned_threshold_count": 200,
+      "recommended": {
+        "best_balanced_accuracy": {
+          "threshold": 0.00551,
+          "true_accepts": 9,
+          "false_rejects": 6,
+          "false_accepts": 1,
+          "true_rejects": 14,
+          "tar": 0.6,
+          "frr": 0.4,
+          "far": 0.066667,
+          "tnr": 0.933333,
+          "precision": 0.9,
+          "balanced_accuracy": 0.766667
+        },
+        "far_le_0.001": {
+          "threshold": 0.004495,
+          "true_accepts": 6,
+          "false_rejects": 9,
+          "false_accepts": 0,
+          "true_rejects": 15,
+          "tar": 0.4,
+          "frr": 0.6,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.7
+        },
+        "far_le_0.010": {
+          "threshold": 0.004495,
+          "true_accepts": 6,
+          "false_rejects": 9,
+          "false_accepts": 0,
+          "true_rejects": 15,
+          "tar": 0.4,
+          "frr": 0.6,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.7
+        },
+        "far_le_0.050": {
+          "threshold": 0.004495,
+          "true_accepts": 6,
+          "false_rejects": 9,
+          "false_accepts": 0,
+          "true_rejects": 15,
+          "tar": 0.4,
+          "frr": 0.6,
+          "far": 0.0,
+          "tnr": 1.0,
+          "precision": 1.0,
+          "balanced_accuracy": 0.7
+        },
+        "far_le_0.100": {
+          "threshold": 0.00551,
+          "true_accepts": 9,
+          "false_rejects": 6,
+          "false_accepts": 1,
+          "true_rejects": 14,
+          "tar": 0.6,
+          "frr": 0.4,
+          "far": 0.066667,
+          "tnr": 0.933333,
+          "precision": 0.9,
+          "balanced_accuracy": 0.766667
+        }
+      }
+    },
+    "recommended_policy": {
+      "match_threshold": 0.004495,
+      "possible_match_threshold": 0.024116,
+      "match_separation_margin": 6.6e-05,
+      "possible_match_separation_margin": 5.1e-05,
+      "match_threshold_source": "far_le_0.010",
+      "possible_match_threshold_source": "positive_probe_p95",
+      "gap_summary": {
+        "count": 10,
+        "min": 3.5e-05,
+        "max": 0.004566,
+        "mean": 0.002208,
+        "std": 0.001603,
+        "median": 0.002538,
+        "p01": 3.8e-05,
+        "p05": 5.1e-05,
+        "p10": 6.6e-05,
+        "p25": 0.000698,
+        "p75": 0.003506,
+        "p90": 0.004128,
+        "p95": 0.004347,
+        "p99": 0.004522
+      },
+      "positive_probe_summary": {
+        "count": 15,
+        "min": 0.002578,
+        "max": 0.025017,
+        "mean": 0.008398,
+        "std": 0.006955,
+        "median": 0.005362,
+        "p01": 0.002634,
+        "p05": 0.002859,
+        "p10": 0.002997,
+        "p25": 0.003993,
+        "p75": 0.00958,
+        "p90": 0.01975,
+        "p95": 0.024116,
+        "p99": 0.024837
+      }
+    }
+  }
+}

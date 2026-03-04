@@ -65,6 +65,63 @@ This document outlines the systematic testing strategy for the TraceIQ applicati
   - **Current Status:** **BLOCKED** (pgvector missing).
   - **Test:** Verify app handles this gracefully (e.g., specific error message or disabled feature) rather than crashing the whole backend.
 
+## 🟠 7. Offline Benchmark Governance
+- [ ] **Prepare benchmark dataset manifest**
+  - **Action:** Organize a directory with one subdirectory per identity and at least 2 images per person, then run:
+    ```bash
+    cd backend
+    python scripts/build_pair_benchmark.py /path/to/benchmark-dataset --output-json uploads/benchmarks/local-manifest.json
+    ```
+  - **Expected:** JSON manifest created with deterministic positive and negative pairs.
+- [ ] **Run offline benchmark**
+  - **Action:** Execute:
+    ```bash
+    python scripts/run_recognition_benchmark.py uploads/benchmarks/local-manifest.json
+    ```
+  - **Expected:** Benchmark JSON created with pair metrics, template calibration, and recommended policy thresholds.
+- [ ] **Generate go/no-go threshold report**
+  - **Action:** Execute:
+    ```bash
+    python scripts/generate_threshold_report.py uploads/benchmarks/<benchmark-report>.json --output-markdown uploads/benchmarks/<threshold-report>.md
+    ```
+  - **Expected:** Governance report created with a `go`, `conditional`, or `no_go` decision plus rollout checklist.
+- [ ] **Block unreviewed threshold changes**
+  - **Action:** Before changing recognition thresholds or deploying a new model, attach the latest benchmark JSON and threshold report to the release note.
+  - **Expected:** The release gate command fails when the report is stale, mismatched, or `no_go`.
+    ```bash
+    python scripts/check_benchmark_gate.py uploads/benchmarks/<threshold-report>.json
+    ```
+
+## 🟠 8. Model Upgrade Path
+- [ ] **Compare supported embedding models on the same held-out manifest**
+  - **Action:** Execute:
+    ```bash
+    cd backend
+    python scripts/compare_models.py uploads/benchmarks/face-2-heldout-manifest.json --output-json uploads/benchmarks/face-2-model-comparison.json
+    ```
+  - **Expected:** A comparison report is generated with per-model benchmark artifacts and a recommended winner.
+- [ ] **Verify benchmark winner before runtime switch**
+  - **Action:** Inspect `uploads/benchmarks/face-2-model-comparison.json`.
+  - **Expected:** The selected runtime model has a `go` decision and a better top-1 rate than the previous version.
+- [ ] **Dry-run re-embedding plan**
+  - **Action:** Execute:
+    ```bash
+    python scripts/reembed_all_faces.py --target-version facenet_vggface2 --dry-run
+    ```
+  - **Expected:** The command returns an eligibility plan without mutating stored embeddings.
+- [ ] **Run backup-backed re-embedding**
+  - **Action:** Execute:
+    ```bash
+    python scripts/reembed_all_faces.py --target-version facenet_vggface2
+    ```
+  - **Expected:** Face records are updated with the new embedding version, templates are rebuilt, and a backup snapshot is written to `uploads/migration-backups/`.
+- [ ] **Rollback from migration snapshot**
+  - **Action:** Execute:
+    ```bash
+    python scripts/reembed_all_faces.py --rollback-json uploads/migration-backups/<snapshot>.json
+    ```
+  - **Expected:** Stored embeddings and template metadata return to the previous version.
+
 ---
 
 ## Testing Log

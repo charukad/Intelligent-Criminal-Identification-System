@@ -42,6 +42,7 @@ services:
       # Application
       PROJECT_NAME: ${PROJECT_NAME:-TraceIQ}
       VERSION: ${VERSION:-1.0.0}
+      FACE_EMBEDDING_VERSION: ${FACE_EMBEDDING_VERSION:-facenet_vggface2}
     volumes:
       - backend_uploads:/app/uploads
     ports:
