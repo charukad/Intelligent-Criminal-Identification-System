@@ -29,7 +29,7 @@ Rebuild the current prototype into a measurable, auditable, and safer face-recog
 | M3 | Recognition decision engine | Match decisions are calibrated and tiered | Completed |
 | M5 | Frontend review and operator workflow | Operators can review, inspect, and correct recognition behavior | Completed |
 | M6 | Offline benchmark and model governance | Threshold and model changes are measured before rollout | Completed |
-| M7 | Model upgrade path | The system can be retrained, re-embedded, and rolled forward safely | In progress |
+| M7 | Model upgrade path | The system can be retrained, re-embedded, and rolled forward safely | Completed |
 
 ## Current Execution Order
 
@@ -50,7 +50,7 @@ This is the active implementation order and current status for the repo:
 7. `M6 benchmark governance`
    Status: `Completed`
 8. `M7 model upgrade path`
-   Status: `In progress`
+   Status: `Completed`
 
 ## M0. Diagnostics And Evaluation
 
@@ -330,15 +330,17 @@ This is the active implementation order and current status for the repo:
 - [x] Generated a real comparison report on the held-out `Face 2` dataset.
 - [x] Run the live database migration against the active Docker deployment.
 - [x] Validate the rollback snapshot in dry-run mode against the active Docker deployment.
-- [ ] Complete a full live rollback-and-restore drill against the active Docker deployment.
+- [x] Complete a full live rollback-and-restore drill against the active Docker deployment.
 
 ### Latest Findings
 - Real model comparison on the `face-2-heldout` benchmark showed a decisive difference between the current custom model and the stronger baseline.
 - `tracenet_v1` received a `no_go` decision with own-template top-1 rate `0.306122`.
 - `facenet_vggface2` received a `go` decision with own-template top-1 rate `1.0` and match FAR `0.006667`.
 - Docker runtime selection is now configured to prefer `facenet_vggface2` by default through `FACE_EMBEDDING_VERSION`.
-- The live Docker migration is complete: `10` face embeddings were re-embedded to `facenet_vggface2`, `3` identity templates were rebuilt, and the post-migration dry run shows `0` remaining eligible faces.
+- The live Docker migration is complete: `10` face embeddings were re-embedded to `facenet_vggface2`, `3` identity templates were rebuilt, and post-migration dry runs show `0` remaining eligible faces.
 - Rollback readiness is in place through snapshot `/app/uploads/migration-backups/facenet_vggface2-20260304-083052.json`, which validated successfully in dry-run mode.
+- A full live rollback-and-restore drill is now complete:
+  rollback to `tracenet_v1` from snapshot, runtime switch to `tracenet_v1`, then restore back to `facenet_vggface2` with a fresh backup snapshot `/app/uploads/migration-backups/facenet_vggface2-20260304-201810.json`.
 
 ### Deliverables
 - Compare TraceNet against stronger face-embedding baselines.
