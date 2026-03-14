@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "dataset": {
-    "name": "testfeaces",
+    "name": "local-face-benchmark",
     "dataset_root": "/Users/dasuncharuka/Documents/projects/face/testfeaces",
     "identity_count": 8,
     "image_count": 49,

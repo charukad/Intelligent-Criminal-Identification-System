@@ -1,0 +1,99 @@
+{
+  "total_test_images": 8,
+  "exact_match_count": 8,
+  "exact_match_rate": 1.0,
+  "unknown_count": 0,
+  "possible_match_count": 1,
+  "wrong_match_count": 0,
+  "request_failed_count": 0,
+  "results": [
+    {
+      "expected": "Anudi Gunasekara",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.6427455324591177,
+      "matched_name": "Anudi Gunasekara",
+      "top_candidate": "Anudi Gunasekara",
+      "is_correct": true
+    },
+    {
+      "expected": "Damith Wijayathunga",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.5099976694764388,
+      "matched_name": "Damith Wijayathunga",
+      "top_candidate": "Damith Wijayathunga",
+      "is_correct": true
+    },
+    {
+      "expected": "Megha Sooriyaarachchi",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.6235618495977917,
+      "matched_name": "Megha Sooriyaarachchi",
+      "top_candidate": "Megha Sooriyaarachchi",
+      "is_correct": true
+    },
+    {
+      "expected": "Nethmi Roshel",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.4960206195665757,
+      "matched_name": "Nethmi Roshel",
+      "top_candidate": "Nethmi Roshel",
+      "is_correct": true
+    },
+    {
+      "expected": "Oshadi Himasha",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.7195496050453652,
+      "matched_name": "Oshadi Himasha",
+      "top_candidate": "Oshadi Himasha",
+      "is_correct": true
+    },
+    {
+      "expected": "Roshan Ranawana",
+      "image": "6.jpg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.5279288542780085,
+      "matched_name": "Roshan Ranawana",
+      "top_candidate": "Roshan Ranawana",
+      "is_correct": true
+    },
+    {
+      "expected": "Saranga disasekara",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "match",
+      "decision_reason": "matched",
+      "distance": 0.6775730171833584,
+      "matched_name": "Saranga disasekara",
+      "top_candidate": "Saranga disasekara",
+      "is_correct": true
+    },
+    {
+      "expected": "Yureni Noshika",
+      "image": "6.jpeg",
+      "http_status": 200,
+      "status": "possible_match",
+      "decision_reason": "possible_match_ambiguous",
+      "distance": 0.8192341937978218,
+      "matched_name": "Yureni Noshika",
+      "top_candidate": "Yureni Noshika",
+      "is_correct": true
+    }
+  ]
+}

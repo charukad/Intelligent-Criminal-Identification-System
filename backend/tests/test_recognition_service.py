@@ -147,11 +147,15 @@ async def test_identify_suspects_rejects_over_threshold_match(mock_cvtColor, moc
     best_template.criminal_id = uuid4()
     best_template.primary_face_id = uuid4()
     template_repo.find_nearest_neighbors.return_value = [
-        (best_template, 0.015),
+        (best_template, 0.91),
     ]
 
     service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
-    response = await service.identify_suspects(b"fake_bytes")
+    response = await service.identify_suspects(
+        b"fake_bytes",
+        threshold=0.8,
+        possible_match_threshold=0.85,
+    )
     results = response["results"]
 
     assert len(results) == 1
@@ -188,7 +192,7 @@ async def test_identify_suspects_returns_possible_match_for_threshold_band(mock_
     mock_template.active_face_count = 3
     mock_template.support_face_count = 2
     mock_template.outlier_face_count = 0
-    template_repo.find_nearest_neighbors.return_value = [(mock_template, 0.0054)]
+    template_repo.find_nearest_neighbors.return_value = [(mock_template, 0.82)]
     face_repo.get.return_value = MagicMock(id=primary_face_id, image_url="uploads/faces/possible.jpg", is_primary=True)
 
     mock_criminal = MagicMock()
@@ -200,7 +204,11 @@ async def test_identify_suspects_returns_possible_match_for_threshold_band(mock_
     criminal_repo.get.return_value = mock_criminal
 
     service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
-    response = await service.identify_suspects(b"fake_bytes")
+    response = await service.identify_suspects(
+        b"fake_bytes",
+        threshold=0.8,
+        possible_match_threshold=0.85,
+    )
     results = response["results"]
 
     assert len(results) == 1
@@ -247,8 +255,8 @@ async def test_identify_suspects_scene_mode_analyzes_all_faces(mock_cvtColor, mo
     template_two.outlier_face_count = 0
 
     template_repo.find_nearest_neighbors.side_effect = [
-        [(template_one, 0.0035)],
-        [(template_two, 0.0058)],
+        [(template_one, 0.75)],
+        [(template_two, 0.82)],
     ]
     face_repo.get.side_effect = [
         MagicMock(id=template_one.primary_face_id, image_url="uploads/faces/one.jpg", is_primary=True),
@@ -261,7 +269,12 @@ async def test_identify_suspects_scene_mode_analyzes_all_faces(mock_cvtColor, mo
     ]
 
     service = RecognitionService(pipeline, template_repo, face_repo, criminal_repo, audit_repo)
-    response = await service.identify_suspects(b"fake_bytes", single_face_only=False)
+    response = await service.identify_suspects(
+        b"fake_bytes",
+        single_face_only=False,
+        threshold=0.8,
+        possible_match_threshold=0.85,
+    )
     results = response["results"]
 
     assert len(results) == 2

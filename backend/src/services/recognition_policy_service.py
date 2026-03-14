@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-DEFAULT_MATCH_THRESHOLD = 0.003579
-DEFAULT_POSSIBLE_MATCH_THRESHOLD = 0.00665
-DEFAULT_MATCH_SEPARATION_MARGIN = 0.000268
-DEFAULT_POSSIBLE_MATCH_SEPARATION_MARGIN = 0.000144
+# Calibrated from backend/uploads/benchmarks/comparisons/testfeaces/facenet_vggface2-threshold.json
+DEFAULT_MATCH_THRESHOLD = 0.821888
+DEFAULT_POSSIBLE_MATCH_THRESHOLD = 0.821888
+DEFAULT_MATCH_SEPARATION_MARGIN = 0.289717
+DEFAULT_POSSIBLE_MATCH_SEPARATION_MARGIN = 0.270798
 
 
 @dataclass(frozen=True)
@@ -109,11 +110,11 @@ class RecognitionPolicyService:
         if second_gap is None:
             return float(round(min(base_score + 4.0, 74.0), 2))
 
-        if second_gap < 0.0002:
+        if second_gap < 0.20:
             base_score -= 8.0
-        elif second_gap < 0.0005:
+        elif second_gap < 0.30:
             base_score -= 4.0
-        elif second_gap > 0.0015:
+        elif second_gap > 0.50:
             base_score += 3.0
 
         return float(round(max(35.0, min(base_score, 74.0)), 2))

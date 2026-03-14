@@ -1,6 +1,6 @@
 # Model Comparison Report
 
-- Dataset: `testfeaces`
+- Dataset: `local-face-benchmark`
 - Candidate count: `2`
 
 ## Recommended Winner

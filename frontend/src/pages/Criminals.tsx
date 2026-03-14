@@ -80,6 +80,48 @@ function formatMetricValue(value: number, suffix = '') {
     return `${value.toFixed(1)}${suffix}`;
 }
 
+function humanizeEnum(value?: string | null, fallback = 'Not provided') {
+    if (!value) {
+        return fallback;
+    }
+
+    return value
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getThreatBadgeVariant(threatLevel?: Criminal['threat_level']) {
+    switch (threatLevel) {
+        case 'critical':
+            return 'destructive' as const;
+        case 'high':
+            return 'warning' as const;
+        case 'medium':
+            return 'info' as const;
+        case 'low':
+            return 'success' as const;
+        default:
+            return 'outline' as const;
+    }
+}
+
+function getStatusBadgeVariant(status?: Criminal['status']) {
+    switch (status) {
+        case 'wanted':
+            return 'destructive' as const;
+        case 'in_custody':
+            return 'warning' as const;
+        case 'released':
+            return 'info' as const;
+        case 'cleared':
+            return 'success' as const;
+        case 'deceased':
+            return 'outline' as const;
+        default:
+            return 'outline' as const;
+    }
+}
+
 function buildDuplicateReviewMessage(summary: DuplicateReviewSummary, fileName?: string) {
     const prefix = fileName ? `${fileName}: ` : '';
     return (
@@ -139,16 +181,16 @@ function getUploadErrorDetails(error: any) {
     }
     if (detail?.review_case_id && detail?.conflicting_criminal?.name) {
         const summary: DuplicateReviewSummary = {
-                review_case_id: String(detail.review_case_id),
-                risk_level: detail.risk_level,
-                distance: Number(detail.distance ?? 0),
-                conflicting_criminal: {
-                    id: String(detail.conflicting_criminal.id),
-                    name: detail.conflicting_criminal.name,
-                    primary_face_image_url: detail.conflicting_criminal.primary_face_image_url ?? null,
-                },
-                status: 'open',
-            };
+            review_case_id: String(detail.review_case_id),
+            risk_level: detail.risk_level,
+            distance: Number(detail.distance ?? 0),
+            conflicting_criminal: {
+                id: String(detail.conflicting_criminal.id),
+                name: detail.conflicting_criminal.name,
+                primary_face_image_url: detail.conflicting_criminal.primary_face_image_url ?? null,
+            },
+            status: 'open',
+        };
         return {
             message: buildDuplicateReviewMessage(summary),
             reviewCaseIds: [summary.review_case_id],
@@ -784,301 +826,363 @@ export default function Criminals() {
                     }
                 }}
             >
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Criminal Profile Details</DialogTitle>
-                    </DialogHeader>
+                <DialogContent className="w-[min(96vw,78rem)] max-w-6xl gap-0 overflow-hidden p-0">
                     {viewingCriminal && (
-                        <div className="space-y-6 mt-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm text-zinc-300">
-                                <div>
-                                    <p className="text-zinc-500">Name</p>
-                                    <p className="font-semibold text-white">
-                                        {viewingCriminal.first_name} {viewingCriminal.last_name}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500">NIC Mapping</p>
-                                    <p className="font-semibold text-white">{viewingCriminal.nic || 'N/A'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500">Aliases</p>
-                                    <p>{viewingCriminal.aliases || 'None'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500">Gender</p>
-                                    <p>{viewingCriminal.gender || 'Unknown'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500">Threat Level</p>
-                                    <p>{viewingCriminal.threat_level}</p>
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500">Status</p>
-                                    <p>{viewingCriminal.status}</p>
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500">Last Known Address</p>
-                                    <p>{viewingCriminal.last_known_address || 'Unknown'}</p>
-                                </div>
-                                <div className="col-span-2">
-                                    <p className="text-zinc-500">Physical Description</p>
-                                    <p>{viewingCriminal.physical_description || 'None documented'}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 border-t border-zinc-800 pt-4">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <p className="text-sm font-semibold text-white">Enrolled Face Images</p>
-                                        <p className="text-xs text-zinc-500">
-                                            Stored mugshots and their embedding metadata used by the recognition pipeline.
-                                        </p>
+                        <div className="grid h-[min(92vh,54rem)] grid-rows-[auto_minmax(0,1fr)]">
+                            <DialogHeader className="border-b border-zinc-800 bg-zinc-950/90 px-6 py-5 pr-14">
+                                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                                    <div className="space-y-2">
+                                        <DialogTitle>
+                                            {viewingCriminal.first_name} {viewingCriminal.last_name}
+                                        </DialogTitle>
+                                        <DialogDescription className="max-w-3xl">
+                                            Full criminal profile, enrolled face history, and recognition-quality details. The header stays fixed and the
+                                            profile body scrolls so the full record remains usable.
+                                        </DialogDescription>
                                     </div>
-                                    {hasRole(['admin', 'senior_officer', 'field_officer']) && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="border-zinc-700"
-                                            onClick={handleRecomputeTemplate}
-                                            disabled={recomputeTemplateMutation.isPending}
-                                        >
-                                            <RefreshCw className={`mr-2 h-4 w-4 ${recomputeTemplateMutation.isPending ? 'animate-spin' : ''}`} />
-                                            Recompute Template
-                                        </Button>
-                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                        <Badge variant={getThreatBadgeVariant(viewingCriminal.threat_level)}>
+                                            Threat: {humanizeEnum(viewingCriminal.threat_level, 'Not set')}
+                                        </Badge>
+                                        <Badge variant={getStatusBadgeVariant(viewingCriminal.status)}>
+                                            Status: {humanizeEnum(viewingCriminal.status, 'Not set')}
+                                        </Badge>
+                                        <Badge variant="outline">
+                                            {isLoadingFaces ? 'Loading faces...' : `${viewingFaces.length} enrolled face${viewingFaces.length === 1 ? '' : 's'}`}
+                                        </Badge>
+                                    </div>
                                 </div>
+                            </DialogHeader>
 
-                                {isLoadingFaces ? (
-                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-6 text-sm text-zinc-500">
-                                        Loading enrolled faces...
-                                    </div>
-                                ) : viewingFaces.length === 0 ? (
-                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-6 text-sm text-zinc-500">
-                                        No face images have been enrolled for this criminal yet.
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {viewingFaces.map((face: CriminalFace, index: number) => {
-                                            const qualityBadge = getFaceQualityBadge(face);
-                                            const faceWarnings = getStoredFaceWarnings(face);
-
-                                            return (
-                                            <div key={face.id} className="relative pl-8">
-                                                {index !== viewingFaces.length - 1 && (
-                                                    <div className="absolute left-[11px] top-8 h-[calc(100%-1rem)] w-px bg-zinc-800" />
-                                                )}
-                                                <div className="absolute left-0 top-2 h-6 w-6 rounded-full border border-zinc-700 bg-zinc-950 flex items-center justify-center">
-                                                    <div className={`h-2.5 w-2.5 rounded-full ${face.is_primary ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+                            <div className="min-h-0 overflow-y-auto px-6 py-6">
+                                <div className="grid gap-6 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+                                    <div className="space-y-6 xl:sticky xl:top-0 xl:self-start">
+                                        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/70">
+                                            {viewingCriminal.primary_face_image_url ? (
+                                                <img
+                                                    src={buildBackendUrl(viewingCriminal.primary_face_image_url)}
+                                                    alt={`${viewingCriminal.first_name} ${viewingCriminal.last_name}`}
+                                                    className="w-full aspect-square object-cover object-top lg:h-auto lg:aspect-[4/3]"
+                                                />
+                                            ) : (
+                                                <div className="flex h-72 items-center justify-center bg-zinc-950 text-sm text-zinc-500">
+                                                    No primary face image enrolled
                                                 </div>
-                                                <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/60">
-                                                    <div className="grid gap-0 md:grid-cols-[220px_1fr]">
-                                                        <img
-                                                            src={buildBackendUrl(face.image_url)}
-                                                            alt="Enrolled criminal face"
-                                                            className="h-56 w-full object-cover md:h-full"
-                                                        />
-                                                        <div className="space-y-4 p-4 text-sm text-zinc-300">
-                                                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                                                <div>
-                                                                    <p className="font-medium text-white">
-                                                                        {face.is_primary ? 'Current Primary Face' : 'Historical Face Record'}
-                                                                    </p>
-                                                                    <p className="mt-1 text-xs text-zinc-500">
-                                                                        Enrolled on {format(new Date(face.created_at), 'PPP p')}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="flex flex-wrap items-center gap-2">
-                                                                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
-                                                                        {face.embedding_version}
-                                                                    </span>
-                                                                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
-                                                                        {face.is_primary ? 'Active' : 'Archived'}
-                                                                    </span>
-                                                                    <Badge variant={qualityBadge.variant}>
-                                                                        {qualityBadge.label}
-                                                                    </Badge>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="grid gap-3 text-xs text-zinc-500 sm:grid-cols-2">
-                                                                <p>
-                                                                    Bounding box: x={face.box[0]}, y={face.box[1]}, w={face.box[2]}, h={face.box[3]}
-                                                                </p>
-                                                                <p>
-                                                                    Face ID: <span className="font-mono text-zinc-400">{face.id}</span>
-                                                                </p>
-                                                            </div>
-
-                                                            <FaceTemplateSummary face={face} />
-                                                            <FaceOutlierWarning face={face} />
-
-                                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                                                                    <div>
-                                                                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                                                                            Recognition Quality
-                                                                        </p>
-                                                                        <p className="mt-1 text-sm text-zinc-300">
-                                                                            Stored quality metrics that affect how reliably this face can match during identification.
-                                                                        </p>
-                                                                    </div>
-                                                                    {faceWarnings.length === 0 ? (
-                                                                        <div className="flex items-center gap-2 rounded-full border border-emerald-900/50 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-200">
-                                                                            <ShieldCheck className="h-3.5 w-3.5" />
-                                                                            No active quality warnings
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="flex items-center gap-2 rounded-full border border-amber-900/50 bg-amber-950/30 px-3 py-1 text-xs text-amber-200">
-                                                                            <ShieldAlert className="h-3.5 w-3.5" />
-                                                                            {faceWarnings.length} warning{faceWarnings.length === 1 ? '' : 's'} to review
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Overall score</p>
-                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.quality_score)}`}>
-                                                                            {formatMetricValue(face.quality.quality_score)}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Pose score</p>
-                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.pose_score)}`}>
-                                                                            {formatMetricValue(face.quality.pose_score)}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Occlusion score</p>
-                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.occlusion_score)}`}>
-                                                                            {formatMetricValue(face.quality.occlusion_score)}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Blur score</p>
-                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.blur_score)}`}>
-                                                                            {formatMetricValue(face.quality.blur_score)}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Brightness</p>
-                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.brightness_score)}`}>
-                                                                            {formatMetricValue(face.quality.brightness_score)}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Face area</p>
-                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.face_area_ratio * 100)}`}>
-                                                                            {formatMetricValue(face.quality.face_area_ratio * 100, '%')}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                {faceWarnings.length > 0 && (
-                                                                    <div className="mt-4 rounded-lg border border-amber-900/50 bg-amber-950/20 p-3">
-                                                                        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-amber-300">
-                                                                            Recognition warnings
-                                                                        </p>
-                                                                        <div className="mt-3 flex flex-wrap gap-2">
-                                                                            {faceWarnings.map((warning) => (
-                                                                                <Badge key={warning} variant="warning" className="font-medium">
-                                                                                    {humanizeQualityLabel(warning)}
-                                                                                </Badge>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {hasRole(['admin', 'senior_officer', 'field_officer']) && (
-                                                                <div className="flex flex-wrap justify-end gap-2 pt-2">
-                                                                    {!face.is_primary && (
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="border-zinc-700 text-zinc-200"
-                                                                            onClick={() => handleSetPrimaryFace(face)}
-                                                                            disabled={setPrimaryFaceMutation.isPending || face.exclude_from_template}
-                                                                        >
-                                                                            Set Primary
-                                                                        </Button>
-                                                                    )}
-                                                                    {!face.exclude_from_template && (
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30"
-                                                                            onClick={() => {
-                                                                                setMarkingBadFace(face);
-                                                                                setMarkBadNotes(face.operator_review_notes || '');
-                                                                            }}
-                                                                            disabled={markBadFaceMutation.isPending}
-                                                                        >
-                                                                            <Ban className="mr-2 h-4 w-4" />
-                                                                            Mark Bad
-                                                                        </Button>
-                                                                    )}
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="border-red-900/50 text-red-400 hover:bg-red-950/30"
-                                                                        onClick={() => setDeletingFace(face)}
-                                                                    >
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        Delete
-                                                                    </Button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                            )}
+                                            <div className="space-y-3 border-t border-zinc-800 p-5">
+                                                <div>
+                                                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                                                        Identity Summary
+                                                    </p>
+                                                    <p className="mt-2 text-xl font-semibold text-white">
+                                                        {viewingCriminal.first_name} {viewingCriminal.last_name}
+                                                    </p>
+                                                    <p className="mt-1 text-sm text-zinc-400">
+                                                        NIC: {viewingCriminal.nic || 'Not provided'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Badge variant="outline">
+                                                        Gender: {humanizeEnum(viewingCriminal.gender, 'Unknown')}
+                                                    </Badge>
+                                                    <Badge variant="outline">
+                                                        DOB: {viewingCriminal.dob || 'Not provided'}
+                                                    </Badge>
+                                                    <Badge variant="outline">
+                                                        Blood: {viewingCriminal.blood_type || 'Not provided'}
+                                                    </Badge>
                                                 </div>
                                             </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+                                        </div>
 
-                            {hasRole(['admin', 'senior_officer', 'field_officer']) && (
-                                <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
-                                    <div>
-                                        <p className="text-sm font-semibold text-white">Add Or Replace Face Image</p>
-                                        <p className="text-xs text-zinc-500">
-                                            Upload another mugshot for this criminal. Mark it as primary to replace the active face image used in the UI.
-                                        </p>
+                                        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+                                            <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                                                Profile Details
+                                            </p>
+                                            <div className="mt-4 grid gap-4 text-sm text-zinc-300 sm:grid-cols-2 xl:grid-cols-1">
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Aliases</p>
+                                                    <p className="mt-1 text-sm text-zinc-200">{viewingCriminal.aliases || 'None recorded'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Last Known Address</p>
+                                                    <p className="mt-1 text-sm text-zinc-200">
+                                                        {viewingCriminal.last_known_address || 'Unknown'}
+                                                    </p>
+                                                </div>
+                                                <div className="sm:col-span-2 xl:col-span-1">
+                                                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Physical Description</p>
+                                                    <p className="mt-1 text-sm leading-6 text-zinc-200">
+                                                        {viewingCriminal.physical_description || 'None documented'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <input
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/webp"
-                                        className="block w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 file:mr-4 file:border-0 file:bg-transparent file:text-sm"
-                                        onChange={(event) => setExistingFaceFile(event.target.files?.[0] ?? null)}
-                                    />
-                                    <label className="flex items-center gap-3 text-sm text-zinc-300">
-                                        <input
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-primary"
-                                            checked={existingFacePrimary}
-                                            onChange={(event) => setExistingFacePrimary(event.target.checked)}
-                                        />
-                                        Mark this upload as the new primary face image
-                                    </label>
-                                    <div className="flex justify-end">
-                                        <Button
-                                            type="button"
-                                            onClick={handleExistingFaceUpload}
-                                            disabled={!existingFaceFile || uploadFaceMutation.isPending || setPrimaryFaceMutation.isPending}
-                                            className="bg-primary text-primary-foreground hover:bg-primary/90"
-                                        >
-                                            {uploadFaceMutation.isPending ? 'Uploading...' : 'Upload Face Image'}
-                                        </Button>
+
+                                    <div className="space-y-6">
+                                        <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/50 p-5">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">Enrolled Face Images</p>
+                                                    <p className="text-xs text-zinc-500">
+                                                        Stored mugshots and embedding metadata used by the recognition pipeline.
+                                                    </p>
+                                                </div>
+                                                {hasRole(['admin', 'senior_officer', 'field_officer']) && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-zinc-700"
+                                                        onClick={handleRecomputeTemplate}
+                                                        disabled={recomputeTemplateMutation.isPending}
+                                                    >
+                                                        <RefreshCw
+                                                            className={`mr-2 h-4 w-4 ${recomputeTemplateMutation.isPending ? 'animate-spin' : ''}`}
+                                                        />
+                                                        Recompute Template
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            {isLoadingFaces ? (
+                                                <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-6 text-sm text-zinc-500">
+                                                    Loading enrolled faces...
+                                                </div>
+                                            ) : viewingFaces.length === 0 ? (
+                                                <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-6 text-sm text-zinc-500">
+                                                    No face images have been enrolled for this criminal yet.
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {viewingFaces.map((face: CriminalFace, index: number) => {
+                                                        const qualityBadge = getFaceQualityBadge(face);
+                                                        const faceWarnings = getStoredFaceWarnings(face);
+
+                                                        return (
+                                                            <div key={face.id} className="relative pl-8">
+                                                                {index !== viewingFaces.length - 1 && (
+                                                                    <div className="absolute left-[11px] top-8 h-[calc(100%-1rem)] w-px bg-zinc-800" />
+                                                                )}
+                                                                <div className="absolute left-0 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950">
+                                                                    <div
+                                                                        className={`h-2.5 w-2.5 rounded-full ${face.is_primary ? 'bg-emerald-400' : 'bg-zinc-500'
+                                                                            }`}
+                                                                    />
+                                                                </div>
+                                                                <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/60">
+                                                                    <div className="grid gap-0 lg:grid-cols-[200px_minmax(0,1fr)]">
+                                                                        <img
+                                                                            src={buildBackendUrl(face.image_url)}
+                                                                            alt="Enrolled criminal face"
+                                                                            className="w-full aspect-square object-cover object-top lg:h-auto lg:aspect-[3/4] lg:self-start"
+                                                                        />
+                                                                        <div className="space-y-4 p-4 text-sm text-zinc-300">
+                                                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                                                <div>
+                                                                                    <p className="font-medium text-white">
+                                                                                        {face.is_primary ? 'Current Primary Face' : 'Historical Face Record'}
+                                                                                    </p>
+                                                                                    <p className="mt-1 text-xs text-zinc-500">
+                                                                                        Enrolled on {format(new Date(face.created_at), 'PPP p')}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
+                                                                                        {face.embedding_version}
+                                                                                    </span>
+                                                                                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
+                                                                                        {face.is_primary ? 'Active' : 'Archived'}
+                                                                                    </span>
+                                                                                    <Badge variant={qualityBadge.variant}>{qualityBadge.label}</Badge>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="grid gap-3 text-xs text-zinc-500 sm:grid-cols-2">
+                                                                                <p>
+                                                                                    Bounding box: x={face.box[0]}, y={face.box[1]}, w={face.box[2]}, h={face.box[3]}
+                                                                                </p>
+                                                                                <p>
+                                                                                    Face ID: <span className="font-mono text-zinc-400">{face.id}</span>
+                                                                                </p>
+                                                                            </div>
+
+                                                                            <FaceTemplateSummary face={face} />
+                                                                            <FaceOutlierWarning face={face} />
+
+                                                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                                                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                                                                    <div>
+                                                                                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                                                                                            Recognition Quality
+                                                                                        </p>
+                                                                                        <p className="mt-1 text-sm text-zinc-300">
+                                                                                            Stored quality metrics that affect how reliably this face can match during identification.
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    {faceWarnings.length === 0 ? (
+                                                                                        <div className="flex items-center gap-2 rounded-full border border-emerald-900/50 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-200">
+                                                                                            <ShieldCheck className="h-3.5 w-3.5" />
+                                                                                            No active quality warnings
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <div className="flex items-center gap-2 rounded-full border border-amber-900/50 bg-amber-950/30 px-3 py-1 text-xs text-amber-200">
+                                                                                            <ShieldAlert className="h-3.5 w-3.5" />
+                                                                                            {faceWarnings.length} warning{faceWarnings.length === 1 ? '' : 's'} to review
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Overall score</p>
+                                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.quality_score)}`}>
+                                                                                            {formatMetricValue(face.quality.quality_score)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Pose score</p>
+                                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.pose_score)}`}>
+                                                                                            {formatMetricValue(face.quality.pose_score)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Occlusion score</p>
+                                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.occlusion_score)}`}>
+                                                                                            {formatMetricValue(face.quality.occlusion_score)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Blur score</p>
+                                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.blur_score)}`}>
+                                                                                            {formatMetricValue(face.quality.blur_score)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Brightness</p>
+                                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.brightness_score)}`}>
+                                                                                            {formatMetricValue(face.quality.brightness_score)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                                                                                        <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Face area</p>
+                                                                                        <p className={`mt-2 text-lg font-semibold ${getMetricTone(face.quality.face_area_ratio * 100)}`}>
+                                                                                            {formatMetricValue(face.quality.face_area_ratio * 100, '%')}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {faceWarnings.length > 0 && (
+                                                                                    <div className="mt-4 rounded-lg border border-amber-900/50 bg-amber-950/20 p-3">
+                                                                                        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-amber-300">
+                                                                                            Recognition warnings
+                                                                                        </p>
+                                                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                                                            {faceWarnings.map((warning) => (
+                                                                                                <Badge key={warning} variant="warning" className="font-medium">
+                                                                                                    {humanizeQualityLabel(warning)}
+                                                                                                </Badge>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {hasRole(['admin', 'senior_officer', 'field_officer']) && (
+                                                                                <div className="flex flex-wrap justify-end gap-2 pt-2">
+                                                                                    {!face.is_primary && (
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            variant="outline"
+                                                                                            size="sm"
+                                                                                            className="border-zinc-700 text-zinc-200"
+                                                                                            onClick={() => handleSetPrimaryFace(face)}
+                                                                                            disabled={setPrimaryFaceMutation.isPending || face.exclude_from_template}
+                                                                                        >
+                                                                                            Set Primary
+                                                                                        </Button>
+                                                                                    )}
+                                                                                    {!face.exclude_from_template && (
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            variant="outline"
+                                                                                            size="sm"
+                                                                                            className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30"
+                                                                                            onClick={() => {
+                                                                                                setMarkingBadFace(face);
+                                                                                                setMarkBadNotes(face.operator_review_notes || '');
+                                                                                            }}
+                                                                                            disabled={markBadFaceMutation.isPending}
+                                                                                        >
+                                                                                            <Ban className="mr-2 h-4 w-4" />
+                                                                                            Mark Bad
+                                                                                        </Button>
+                                                                                    )}
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        variant="outline"
+                                                                                        size="sm"
+                                                                                        className="border-red-900/50 text-red-400 hover:bg-red-950/30"
+                                                                                        onClick={() => setDeletingFace(face)}
+                                                                                    >
+                                                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                                                        Delete
+                                                                                    </Button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {hasRole(['admin', 'senior_officer', 'field_officer']) && (
+                                            <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/50 p-5">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">Add Or Replace Face Image</p>
+                                                    <p className="text-xs text-zinc-500">
+                                                        Upload another mugshot for this criminal. Mark it as primary to replace the active face image used in the UI.
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    className="block w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 file:mr-4 file:border-0 file:bg-transparent file:text-sm"
+                                                    onChange={(event) => setExistingFaceFile(event.target.files?.[0] ?? null)}
+                                                />
+                                                <label className="flex items-center gap-3 text-sm text-zinc-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-primary"
+                                                        checked={existingFacePrimary}
+                                                        onChange={(event) => setExistingFacePrimary(event.target.checked)}
+                                                    />
+                                                    Mark this upload as the new primary face image
+                                                </label>
+                                                <div className="flex justify-end">
+                                                    <Button
+                                                        type="button"
+                                                        onClick={handleExistingFaceUpload}
+                                                        disabled={
+                                                            !existingFaceFile ||
+                                                            uploadFaceMutation.isPending ||
+                                                            setPrimaryFaceMutation.isPending
+                                                        }
+                                                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                                                    >
+                                                        {uploadFaceMutation.isPending ? 'Uploading...' : 'Upload Face Image'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
                 </DialogContent>
